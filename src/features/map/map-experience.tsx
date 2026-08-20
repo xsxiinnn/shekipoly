@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 
-import type { MapAgeGroup, MapData, MapTeam } from "./types";
+import type { MapData, MapTeam, MapTeamGroup } from "./types";
 
 const BOARD_SQUARES = [
   31, 32, 33, 34, 35, 36,
@@ -118,18 +118,21 @@ function TeamCard({ team }: { team: MapTeam }) {
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold text-foreground">{team.name}</p>
+          <p className="mt-0.5 text-[11px] font-semibold text-brand">{team.zoneName}</p>
           <p className="mt-0.5 text-xs text-muted">
-            {isFinished ? "已抵達同行終點" : `再 ${team.pointsToNextSquare} 分前進 1 格`}
+            {isFinished
+              ? "已抵達同行終點"
+              : `距離下一格還差 ${team.pointsToNextSquare} 步`}
           </p>
         </div>
         <div className="grid shrink-0 grid-cols-2 gap-x-3 text-right">
           <div>
-            <p className="text-[10px] font-semibold text-muted">總分</p>
-            <p className="text-base font-black tabular-nums text-foreground">{team.totalScore}</p>
+            <p className="text-[10px] font-semibold text-muted">累積</p>
+            <p className="text-sm font-black tabular-nums text-foreground">{team.totalScore}步</p>
           </div>
           <div>
             <p className="text-[10px] font-semibold text-muted">目前</p>
-            <p className="text-base font-black tabular-nums text-brand">{team.currentSquare}</p>
+            <p className="text-sm font-black tabular-nums text-brand">第{team.currentSquare}格</p>
           </div>
         </div>
       </div>
@@ -213,7 +216,7 @@ function TeamSheet({
                 <FlagIcon color={team.flagColor} label={`${team.name}旗子`} />
                 <span className="min-w-0 flex-1 truncate text-sm font-bold">{team.name}</span>
                 <span className="text-xs font-semibold tabular-nums text-muted">
-                  {team.totalScore} 分
+                  {team.totalScore} 步
                 </span>
               </li>
             ))}
@@ -228,30 +231,40 @@ function TeamSheet({
   );
 }
 
-export function MapExperience({ ageGroups, initialAgeGroupId }: MapData) {
-  const [selectedAgeGroupId, setSelectedAgeGroupId] = useState(initialAgeGroupId);
+export function MapExperience({ teamGroups, initialTeamGroupId, error }: MapData) {
+  const [selectedTeamGroupId, setSelectedTeamGroupId] = useState(initialTeamGroupId);
   const [selectedSquare, setSelectedSquare] = useState<number | null>(null);
 
-  const selectedAgeGroup =
-    ageGroups.find((ageGroup) => ageGroup.id === selectedAgeGroupId) ?? ageGroups[0];
+  const selectedTeamGroup =
+    teamGroups.find((teamGroup) => teamGroup.id === selectedTeamGroupId) ??
+    teamGroups[0];
 
   const teamsBySquare = useMemo(() => {
     const groupedTeams = new Map<number, MapTeam[]>();
-    for (const team of selectedAgeGroup?.teams ?? []) {
+    for (const team of selectedTeamGroup?.teams ?? []) {
       const teams = groupedTeams.get(team.currentSquare) ?? [];
       teams.push(team);
       groupedTeams.set(team.currentSquare, teams);
     }
     return groupedTeams;
-  }, [selectedAgeGroup]);
+  }, [selectedTeamGroup]);
 
-  const handleAgeGroupChange = (ageGroup: MapAgeGroup) => {
-    setSelectedAgeGroupId(ageGroup.id);
+  const handleTeamGroupChange = (teamGroup: MapTeamGroup) => {
+    setSelectedTeamGroupId(teamGroup.id);
     setSelectedSquare(null);
   };
 
-  if (!selectedAgeGroup) {
-    return null;
+  if (!selectedTeamGroup) {
+    return (
+      <section className="mt-4 rounded-3xl border border-dashed border-border bg-surface/60 px-5 py-12 text-center">
+        <p className="text-sm font-black text-foreground">
+          {error ? "地圖載入失敗" : "尚未設定團隊"}
+        </p>
+        <p className="mt-2 text-sm leading-6 text-muted">
+          {error ?? "請聯絡管理員完成團隊、區與小組設定。"}
+        </p>
+      </section>
+    );
   }
 
   const selectedSquareTeams =
@@ -264,7 +277,7 @@ export function MapExperience({ ageGroups, initialAgeGroupId }: MapData) {
         <div className="mt-1 flex items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl font-black tracking-tight">同行地圖</h1>
-            <p className="mt-1 text-sm text-muted">每累積 5 分，旗子前進 1 格</p>
+            <p className="mt-1 text-sm text-muted">每累積 5 步，旗子前進 1 格</p>
           </div>
           <span className="shrink-0 rounded-full bg-brand-soft px-2.5 py-1 text-xs font-bold text-brand">
             36 格
@@ -274,49 +287,40 @@ export function MapExperience({ ageGroups, initialAgeGroupId }: MapData) {
 
       <div
         role="tablist"
-        aria-label="年齡組別"
+        aria-label="團隊"
         className="grid grid-cols-4 gap-1 rounded-2xl border border-border bg-surface p-1 shadow-sm"
       >
-        {ageGroups.map((ageGroup) => {
-          const isSelected = ageGroup.id === selectedAgeGroup.id;
-          const isLongLabel = ageGroup.name === "研究生+社青";
+        {teamGroups.map((teamGroup) => {
+          const isSelected = teamGroup.id === selectedTeamGroup.id;
 
           return (
             <button
-              key={ageGroup.id}
+              key={teamGroup.id}
               type="button"
               role="tab"
               aria-selected={isSelected}
-              onClick={() => handleAgeGroupChange(ageGroup)}
+              onClick={() => handleTeamGroupChange(teamGroup)}
               className={`relative min-w-0 rounded-xl px-0.5 py-2 text-[11px] font-bold leading-tight ${
                 isSelected ? "text-white" : "text-muted"
               }`}
             >
               {isSelected ? (
                 <motion.span
-                  layoutId="selected-age-group"
+                  layoutId="selected-team-group"
                   className="absolute inset-0 rounded-xl bg-brand"
                   transition={{ type: "spring", stiffness: 420, damping: 34 }}
                 />
               ) : null}
-              <span className="relative">
-                {isLongLabel ? (
-                  <>
-                    研究生+<br />社青
-                  </>
-                ) : (
-                  ageGroup.name
-                )}
-              </span>
+              <span className="relative break-words">{teamGroup.name}</span>
             </button>
           );
         })}
       </div>
 
-      <section aria-label={`${selectedAgeGroup.name}同行地圖`} className="mt-4">
+      <section aria-label={`${selectedTeamGroup.name}同行地圖`} className="mt-4">
         <div className="mb-2 flex items-center justify-between gap-3 px-0.5">
-          <h2 className="text-sm font-black">{selectedAgeGroup.name}</h2>
-          <p className="text-xs font-semibold text-muted">{selectedAgeGroup.teams.length} 個小組</p>
+          <h2 className="text-sm font-black">{selectedTeamGroup.name}</h2>
+          <p className="text-xs font-semibold text-muted">{selectedTeamGroup.teams.length} 個小組</p>
         </div>
         <div className="grid min-w-0 grid-cols-6 gap-[3px] rounded-2xl bg-[#dfe7e3] p-[3px] shadow-[0_8px_24px_rgba(29,39,36,0.09)]">
           {BOARD_SQUARES.map((square) => (
@@ -338,15 +342,15 @@ export function MapExperience({ ageGroups, initialAgeGroupId }: MapData) {
           <div>
             <p className="text-xs font-bold tracking-[0.14em] text-brand">小組進度</p>
             <h2 id="team-progress-title" className="mt-0.5 text-xl font-black">
-              {selectedAgeGroup.name}小組
+              {selectedTeamGroup.name}小組
             </h2>
           </div>
-          <span className="text-xs text-muted">總分／目前格</span>
+          <span className="text-xs text-muted">累積／目前格</span>
         </div>
 
-        {selectedAgeGroup.teams.length > 0 ? (
+        {selectedTeamGroup.teams.length > 0 ? (
           <ul className="space-y-2.5">
-            {[...selectedAgeGroup.teams]
+            {[...selectedTeamGroup.teams]
               .sort((first, second) => second.totalScore - first.totalScore)
               .map((team) => (
                 <TeamCard key={team.id} team={team} />

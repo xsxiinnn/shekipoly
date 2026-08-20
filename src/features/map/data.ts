@@ -1,11 +1,12 @@
 import "server-only";
 
+import { unstable_rethrow } from "next/navigation";
+
+import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
 import { getCurrentSquare, getPointsToNextSquare } from "./scoring";
-import type { MapAgeGroup, MapData, MapTeam } from "./types";
-
-const REQUIRED_AGE_GROUPS = ["國中", "高中", "大學", "研究生+社青"] as const;
+import type { MapData, MapTeam, MapTeamGroup } from "./types";
 
 const FLAG_COLORS = [
   "#e85d4a",
@@ -19,12 +20,14 @@ const FLAG_COLORS = [
 function makeTeam(
   id: string,
   name: string,
+  zoneName: string,
   totalScore: number,
   colorIndex: number,
 ): MapTeam {
   return {
     id,
     name,
+    zoneName,
     totalScore,
     currentSquare: getCurrentSquare(totalScore),
     pointsToNextSquare: getPointsToNextSquare(totalScore),
@@ -32,75 +35,53 @@ function makeTeam(
   };
 }
 
-function getPreviewData(): MapData {
-  const ageGroups: MapAgeGroup[] = REQUIRED_AGE_GROUPS.map((name, index) => ({
-    id: index + 1,
-    name,
-    teams:
-      index === 0
-        ? [
-            makeTeam("preview-1", "晨光小隊", 20, 0),
-            makeTeam("preview-2", "橄欖枝小隊", 21, 1),
-            makeTeam("preview-3", "星火小隊", 23, 2),
-            makeTeam("preview-4", "同行小隊", 24, 3),
-            makeTeam("preview-5", "暖陽小隊", 42, 4),
-            makeTeam("preview-6", "好鄰舍小隊", 61, 5),
-            makeTeam("preview-7", "蒲公英小隊", 174, 1),
-          ]
-        : index === 1
-          ? [makeTeam("preview-8", "飛鳥小隊", 8, 4)]
-          : [],
-  }));
-
-  return { ageGroups, initialAgeGroupId: 1 };
-}
-
-function getEmptyData(): MapData {
-  const ageGroups = REQUIRED_AGE_GROUPS.map((name, index) => ({
-    id: index + 1,
-    name,
-    teams: [],
-  }));
-
-  return { ageGroups, initialAgeGroupId: ageGroups[0].id };
+function getEmptyData(error: string | null = null): MapData {
+  return { teamGroups: [], initialTeamGroupId: null, error };
 }
 
 export async function getMapData(): Promise<MapData> {
-  if (
-    process.env.NODE_ENV === "development" &&
-    process.env.MAP_USE_PREVIEW_DATA === "true"
-  ) {
-    return getPreviewData();
+  if (!hasSupabaseConfig()) {
+    return getEmptyData("尚未設定 Supabase 連線。");
   }
 
   try {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: claimsData } = await supabase.auth.getClaims();
+    const userId = claimsData?.claims?.sub;
 
-    const profileQuery = user
+    const profileQuery = userId
       ? supabase
           .from("profiles")
-          .select("age_group_id")
-          .eq("id", user.id)
+          .select("team_id")
+          .eq("id", userId)
           .maybeSingle()
       : Promise.resolve({ data: null, error: null });
 
-    const [ageGroupsResult, teamsResult, progressResult, profileResult] =
+    const [teamGroupsResult, zonesResult, teamsResult, progressResult, profileResult] =
       await Promise.all([
         supabase
-          .from("age_groups")
+          .from("team_groups")
           .select("id, name")
           .eq("is_active", true)
           .order("sort_order"),
-        supabase.from("teams").select("id, name, age_group_id").order("name"),
+        supabase
+          .from("zones")
+          .select("id, name, team_group_id")
+          .eq("is_active", true)
+          .order("sort_order"),
+        supabase
+          .from("teams")
+          .select("id, name, zone_id")
+          .eq("is_active", true)
+          .order("sort_order")
+          .order("name"),
         supabase.from("team_progress").select("team_id, accepted_score"),
         profileQuery,
       ]);
 
     const queryError =
-      ageGroupsResult.error ??
+      teamGroupsResult.error ??
+      zonesResult.error ??
       teamsResult.error ??
       progressResult.error ??
       profileResult.error;
@@ -117,40 +98,54 @@ export async function getMapData(): Promise<MapData> {
       );
     }
 
-    const teamsByAgeGroup = new Map<number, MapTeam[]>();
+    const zoneById = new Map(
+      (zonesResult.data ?? []).map((zone) => [zone.id, zone] as const),
+    );
+    const teamsByTeamGroup = new Map<number, MapTeam[]>();
+
     for (const [index, team] of (teamsResult.data ?? []).entries()) {
+      const zone = zoneById.get(team.zone_id);
+      if (!zone?.team_group_id) continue;
+
       const totalScore = scoreByTeam.get(team.id) ?? 0;
-      const mapTeam = makeTeam(team.id, team.name, totalScore, index);
-      const existingTeams = teamsByAgeGroup.get(team.age_group_id) ?? [];
+      const mapTeam = makeTeam(team.id, team.name, zone.name, totalScore, index);
+      const existingTeams = teamsByTeamGroup.get(zone.team_group_id) ?? [];
       existingTeams.push(mapTeam);
-      teamsByAgeGroup.set(team.age_group_id, existingTeams);
+      teamsByTeamGroup.set(zone.team_group_id, existingTeams);
     }
 
-    const ageGroups: MapAgeGroup[] = (ageGroupsResult.data ?? []).map(
-      (ageGroup) => ({
-        id: ageGroup.id,
-        name: ageGroup.name,
-        teams: teamsByAgeGroup.get(ageGroup.id) ?? [],
+    const teamGroups: MapTeamGroup[] = (teamGroupsResult.data ?? []).map(
+      (teamGroup) => ({
+        id: teamGroup.id,
+        name: teamGroup.name,
+        teams: teamsByTeamGroup.get(teamGroup.id) ?? [],
       }),
     );
 
-    if (ageGroups.length === 0) {
+    if (teamGroups.length === 0) {
       return getEmptyData();
     }
 
-    const profileAgeGroupId = profileResult.data?.age_group_id;
-    const hasProfileAgeGroup = ageGroups.some(
-      (ageGroup) => ageGroup.id === profileAgeGroupId,
+    const profileTeam = (teamsResult.data ?? []).find(
+      (team) => team.id === profileResult.data?.team_id,
+    );
+    const profileTeamGroupId = profileTeam
+      ? zoneById.get(profileTeam.zone_id)?.team_group_id
+      : null;
+    const hasProfileTeamGroup = teamGroups.some(
+      (teamGroup) => teamGroup.id === profileTeamGroupId,
     );
 
     return {
-      ageGroups,
-      initialAgeGroupId: hasProfileAgeGroup
-        ? profileAgeGroupId
-        : ageGroups[0].id,
+      teamGroups,
+      initialTeamGroupId: hasProfileTeamGroup
+        ? (profileTeamGroupId ?? teamGroups[0].id)
+        : teamGroups[0].id,
+      error: null,
     };
   } catch (error) {
+    unstable_rethrow(error);
     console.error("Unable to load map data", error);
-    return getEmptyData();
+    return getEmptyData("目前無法載入地圖資料。");
   }
 }
