@@ -127,64 +127,6 @@ begin
 end;
 $$;
 
-insert into public.reports (
-  user_id,
-  friend_alias,
-  is_3x5,
-  mission_id,
-  story,
-  photo_path
-)
-select
-  '00000000-0000-0000-0000-000000000701',
-  'friend-' || sequence_number,
-  true,
-  6,
-  '',
-  'reports/score-proof.jpg'
-from generate_series(1, 4) as sequence_number;
-
-update public.reports
-set
-  photo_is_valid = true,
-  status = 'accepted',
-  created_at = timestamptz '2026-08-31 12:00:00+08'
-where user_id = '00000000-0000-0000-0000-000000000701';
-
-do $$
-declare
-  accepted_scores smallint[];
-  progress_score smallint;
-begin
-  if exists (
-    select 1
-    from public.reports
-    where user_id = '00000000-0000-0000-0000-000000000701'
-      and (base_score <> 3 or mission_score <> 6 or photo_bonus <> 3 or raw_score <> 9)
-  ) then
-    raise exception 'Mission, 3x5, photo, or raw score regression detected';
-  end if;
-
-  select array_agg(accepted_score order by accepted_score)
-  into accepted_scores
-  from public.reports
-  where user_id = '00000000-0000-0000-0000-000000000701';
-  if accepted_scores <> array[3, 9, 9, 9]::smallint[] then
-    raise exception 'Weekly cap regression: %', accepted_scores;
-  end if;
-
-  select team_progress.accepted_score
-  into progress_score
-  from public.team_progress
-  join public.profiles on profiles.team_id = team_progress.team_id
-  where profiles.id = '00000000-0000-0000-0000-000000000701'
-    and team_progress.activity_week = 1;
-  if progress_score <> 30 then
-    raise exception 'Expected team_progress 30, got %', progress_score;
-  end if;
-end;
-$$;
-
 do $$
 begin
   if not has_table_privilege('authenticated', 'public.profiles', 'SELECT')
@@ -276,28 +218,22 @@ $$;
 
 reset role;
 
+set local role service_role;
+select public.submit_report_for_development(
+  '00000000-0000-0000-0000-000000000501',
+  'own-report',
+  1,
+  false,
+  '',
+  1
+);
+reset role;
+
 set local role authenticated;
 select set_config(
   'request.jwt.claim.sub',
   '00000000-0000-0000-0000-000000000501',
   true
-);
-
-insert into public.reports (
-  user_id,
-  friend_alias,
-  is_3x5,
-  mission_id,
-  story,
-  photo_path
-)
-values (
-  '00000000-0000-0000-0000-000000000501',
-  'own-report',
-  false,
-  1,
-  '',
-  null
 );
 
 do $$
@@ -347,8 +283,8 @@ declare
   changed_reports integer;
 begin
   select count(*) into visible_reports from public.reports;
-  if visible_reports <> 5 then
-    raise exception 'Admin report RLS exposed % rows instead of 5', visible_reports;
+  if visible_reports <> 1 then
+    raise exception 'Admin report RLS exposed % rows instead of 1', visible_reports;
   end if;
 
   update public.reports

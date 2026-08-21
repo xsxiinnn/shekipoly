@@ -5,7 +5,6 @@ import { unstable_rethrow } from "next/navigation";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
-import { getCurrentSquare, getPointsToNextSquare } from "./scoring";
 import type { MapData, MapTeam, MapTeamGroup } from "./types";
 
 const FLAG_COLORS = [
@@ -22,6 +21,8 @@ function makeTeam(
   name: string,
   zoneName: string,
   totalScore: number,
+  currentSquare: number,
+  pointsToNextSquare: number,
   colorIndex: number,
 ): MapTeam {
   return {
@@ -29,8 +30,8 @@ function makeTeam(
     name,
     zoneName,
     totalScore,
-    currentSquare: getCurrentSquare(totalScore),
-    pointsToNextSquare: getPointsToNextSquare(totalScore),
+    currentSquare,
+    pointsToNextSquare,
     flagColor: FLAG_COLORS[colorIndex % FLAG_COLORS.length],
   };
 }
@@ -75,7 +76,11 @@ export async function getMapData(): Promise<MapData> {
           .eq("is_active", true)
           .order("sort_order")
           .order("name"),
-        supabase.from("team_progress").select("team_id, accepted_score"),
+        supabase
+          .from("team_map_progress")
+          .select(
+            "team_id, accepted_total, current_square, steps_to_next_square",
+          ),
         profileQuery,
       ]);
 
@@ -90,12 +95,20 @@ export async function getMapData(): Promise<MapData> {
       throw queryError;
     }
 
-    const scoreByTeam = new Map<string, number>();
+    const progressByTeam = new Map<
+      string,
+      {
+        acceptedTotal: number;
+        currentSquare: number;
+        stepsToNextSquare: number;
+      }
+    >();
     for (const progress of progressResult.data ?? []) {
-      scoreByTeam.set(
-        progress.team_id,
-        (scoreByTeam.get(progress.team_id) ?? 0) + progress.accepted_score,
-      );
+      progressByTeam.set(progress.team_id, {
+        acceptedTotal: progress.accepted_total,
+        currentSquare: progress.current_square,
+        stepsToNextSquare: progress.steps_to_next_square,
+      });
     }
 
     const zoneById = new Map(
@@ -107,8 +120,16 @@ export async function getMapData(): Promise<MapData> {
       const zone = zoneById.get(team.zone_id);
       if (!zone?.team_group_id) continue;
 
-      const totalScore = scoreByTeam.get(team.id) ?? 0;
-      const mapTeam = makeTeam(team.id, team.name, zone.name, totalScore, index);
+      const progress = progressByTeam.get(team.id);
+      const mapTeam = makeTeam(
+        team.id,
+        team.name,
+        zone.name,
+        progress?.acceptedTotal ?? 0,
+        progress?.currentSquare ?? 1,
+        progress?.stepsToNextSquare ?? 5,
+        index,
+      );
       const existingTeams = teamsByTeamGroup.get(zone.team_group_id) ?? [];
       existingTeams.push(mapTeam);
       teamsByTeamGroup.set(zone.team_group_id, existingTeams);
