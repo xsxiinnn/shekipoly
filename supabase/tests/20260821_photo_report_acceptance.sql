@@ -112,19 +112,6 @@ exception when sqlstate 'P0001' then
 end;
 $$;
 
--- A photo without explicit consent is rejected before it can be scored.
-do $$
-begin
-  perform public.submit_report_for_development_v2(
-    '20000000-0000-0000-0000-000000000001', 'photo-case-no-consent', 1, false, '', 1,
-    '20000000-0000-0000-0000-000000000001/00000000-0000-4000-8000-000000000008.svg', false
-  );
-  raise exception 'Photo without consent unexpectedly succeeded';
-exception when sqlstate 'P0001' then
-  if sqlerrm <> 'REPORT_PHOTO_CONSENT_REQUIRED' then raise; end if;
-end;
-$$;
-
 do $$
 begin
   perform public.submit_report_for_development_v2(
@@ -189,7 +176,6 @@ begin
     where friend_alias = 'photo-case-i'
       and status = 'active'
       and photo_is_valid
-      and photo_consent
       and photo_visibility = 'visible'
       and photo_path is not null
   ) then
@@ -202,7 +188,6 @@ begin
       and accepted_score = 0
       and status = 'active'
       and photo_is_valid
-      and photo_consent
       and photo_visibility = 'visible'
       and photo_path is not null
   ) then

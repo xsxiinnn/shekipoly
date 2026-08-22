@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test src/features/report/development-week.test.mts src/features/report/photo.test.mts src/features/report/photo-signature.test.mts src/features/report/submission-payload.test.mts"
+    "test": "node --experimental-strip-types --test src/features/report/development-week.test.mts src/features/report/photo.test.mts src/features/report/photo-signature.test.mts src/features/report/submission-payload.test.mts src/features/admin/filters.test.mts src/features/admin/csv.test.mts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

@@ -139,7 +139,6 @@ export function ReportForm({
   const [photo, setPhoto] = useState<(PreparedPhoto & { previewUrl: string }) | null>(
     null,
   );
-  const [photoConsent, setPhotoConsent] = useState(false);
   const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
@@ -166,10 +165,8 @@ export function ReportForm({
     try {
       const prepared = await preparePhoto(file);
       setPhoto({ ...prepared, previewUrl: URL.createObjectURL(prepared.blob) });
-      setPhotoConsent(false);
     } catch (error) {
       setPhoto(null);
-      setPhotoConsent(false);
       setPhotoError(
         error instanceof Error
           ? error.message
@@ -183,18 +180,12 @@ export function ReportForm({
 
   function removePhoto() {
     setPhoto(null);
-    setPhotoConsent(false);
     setPhotoError(null);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submittingRef.current || isBusy) return;
-
-    if (photo && !photoConsent) {
-      setPhotoError("請確認已取得照片中人物同意，並同意用於活動照片牆。");
-      return;
-    }
 
     const form = event.currentTarget;
     // Take the complete snapshot before upload state disables form controls.
@@ -225,7 +216,7 @@ export function ReportForm({
         }
       }
 
-      addPhotoFieldsToReportPayload(payload, uploadedPath, photoConsent);
+      addPhotoFieldsToReportPayload(payload, uploadedPath);
       if (process.env.NODE_ENV !== "production") {
         console.debug(
           "Submitting report fields",
@@ -426,16 +417,6 @@ export function ReportForm({
                 移除照片
               </button>
             </div>
-            <label className="mt-4 flex items-start gap-3 rounded-2xl bg-brand-soft p-3.5 text-sm font-bold leading-6">
-              <input
-                type="checkbox"
-                checked={photoConsent}
-                onChange={(event) => setPhotoConsent(event.target.checked)}
-                disabled={isBusy}
-                className="mt-0.5 size-5 shrink-0 accent-brand"
-              />
-              <span>我已取得照片中人物同意，並同意照片用於活動照片牆。</span>
-            </label>
           </div>
         ) : (
           <button

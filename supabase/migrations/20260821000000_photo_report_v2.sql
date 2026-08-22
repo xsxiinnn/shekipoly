@@ -1,22 +1,18 @@
 begin;
 
 alter table public.reports
-add column photo_consent boolean not null default false;
 
 alter table public.reports
 add column photo_visibility text not null default 'visible'
   check (photo_visibility in ('visible', 'hidden'));
 
 alter table public.reports
-add constraint reports_valid_photo_requires_consent
-check (not photo_is_valid or (photo_consent and photo_path is not null));
+check (not photo_is_valid or (photo_path is not null));
 
 create unique index reports_active_photo_path_unique
   on public.reports(photo_path)
   where status = 'active' and photo_path is not null;
 
-comment on column public.reports.photo_consent is
-  '回報者確認照片可用於活動照片牆；有照片 bonus 時必須為 true。';
 comment on column public.reports.photo_visibility is
   '照片牆顯示狀態；學生不可直接修改。';
 
@@ -115,14 +111,9 @@ begin
   new.mission_score := calculated_base_score * case when new.is_3x5 then 2 else 1 end;
   new.photo_is_valid := coalesce(new.photo_is_valid, false)
     and new.photo_path is not null
-    and coalesce(new.photo_consent, false);
   new.photo_bonus := case when new.photo_is_valid then 3 else 0 end;
   new.raw_score := new.mission_score + new.photo_bonus;
   new.accepted_score := 0;
-
-  if new.photo_path is null then
-    new.photo_consent := false;
-  end if;
 
   if tg_op = 'INSERT' then
     new.created_at := now();
@@ -158,7 +149,6 @@ create function public.submit_report_internal(
   p_story text,
   p_activity_week_override integer,
   p_photo_path text,
-  p_photo_consent boolean
 )
 returns jsonb
 language plpgsql
@@ -236,10 +226,6 @@ begin
   end if;
 
   if normalized_photo_path is not null then
-    if not coalesce(p_photo_consent, false) then
-      raise exception 'REPORT_PHOTO_CONSENT_REQUIRED'
-        using errcode = 'P0001';
-    end if;
 
     if split_part(normalized_photo_path, '/', 1) <> reporter_id::text
       or normalized_photo_path !~ (
@@ -307,7 +293,6 @@ begin
     story,
     photo_path,
     photo_is_valid,
-    photo_consent,
     status,
     activity_week
   ) values (
@@ -388,7 +373,6 @@ create function public.submit_report_with_photo(
   p_is_3x5 boolean,
   p_story text,
   p_photo_path text,
-  p_photo_consent boolean
 )
 returns jsonb
 language sql
@@ -397,7 +381,7 @@ set search_path = ''
 as $$
   select public.submit_report_internal(
     p_reporter_id, p_friend_alias, p_mission_id, p_is_3x5, p_story, null,
-    p_photo_path, p_photo_consent
+    p_photo_path
   );
 $$;
 
@@ -429,7 +413,6 @@ create function public.submit_report_for_development_v2(
   p_story text,
   p_activity_week integer,
   p_photo_path text,
-  p_photo_consent boolean
 )
 returns jsonb
 language sql
@@ -438,7 +421,7 @@ set search_path = ''
 as $$
   select public.submit_report_internal(
     p_reporter_id, p_friend_alias, p_mission_id, p_is_3x5, p_story,
-    p_activity_week, p_photo_path, p_photo_consent
+    p_activity_week, p_photo_path
   );
 $$;
 
@@ -478,9 +461,9 @@ begin
 end;
 $$;
 
-revoke insert (photo_consent, photo_visibility)
+revoke insert (photo_visibility)
   on table public.reports from authenticated;
-revoke update (photo_consent, photo_visibility)
+revoke update (photo_visibility)
   on table public.reports from authenticated;
 
 commit;

@@ -77,9 +77,6 @@ function friendlyRpcError(message: string) {
   if (message.includes("REPORT_OUTSIDE_ACTIVITY")) {
     return "目前不在活動回報期間，暫時無法送出。";
   }
-  if (message.includes("REPORT_PHOTO_CONSENT_REQUIRED")) {
-    return "上傳照片前，請先確認照片使用同意。";
-  }
   if (
     message.includes("REPORT_PHOTO_NOT_OWNED") ||
     message.includes("REPORT_PHOTO_INVALID")
@@ -141,7 +138,6 @@ export async function submitReport(
     typeof photoPathValue === "string" && photoPathValue.trim()
       ? photoPathValue.trim()
       : null;
-  const photoConsent = formData.get("photo_consent") === "true";
   const fieldErrors: NonNullable<ReportActionState["fieldErrors"]> = {};
 
   if (!friendAlias) {
@@ -153,7 +149,6 @@ export async function submitReport(
   if (is3x5 === null) fieldErrors.is3x5 = "請選擇是否為 3×5 禱告名單。";
   if (!missionId) fieldErrors.missionId = "請選擇這次完成的任務。";
   if (story.length > 2000) fieldErrors.story = "故事不可超過 2000 個字。";
-  if (photoPath && !photoConsent) fieldErrors.photo = "請確認照片使用同意。";
   if (photoPath && photoPath.length > 200) fieldErrors.photo = "照片路徑格式不正確。";
 
   let supabase: Awaited<ReturnType<typeof createClient>> | null = null;
@@ -223,7 +218,6 @@ export async function submitReport(
             p_story: story,
             p_activity_week: developmentWeek.week,
             p_photo_path: photoPath,
-            p_photo_consent: photoConsent,
           })
         : await createAdminClient().rpc("submit_report_for_development", {
             p_reporter_id: authenticatedUserId,
@@ -241,7 +235,6 @@ export async function submitReport(
         p_is_3x5: is3x5!,
         p_story: story,
         p_photo_path: photoPath,
-        p_photo_consent: photoConsent,
       });
     } else {
       rpcResult = await supabase.rpc("submit_report", {

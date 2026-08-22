@@ -133,7 +133,6 @@ export async function getPhotoWallData(options: {
       .select("id, team_id, mission_id, photo_path, created_at", { count: "exact" })
       .eq("status", "active")
       .eq("photo_is_valid", true)
-      .eq("photo_consent", true)
       .eq("photo_visibility", "visible")
       .not("photo_path", "is", null)
       .in("team_id", selectedTeamIds)
