@@ -23,6 +23,9 @@ export type ReportSuccess = {
   reportId: string;
   missionName: string;
   is3x5: boolean;
+  missionScore: number;
+  photoBonus: number;
+  hasPhoto: boolean;
   rawScore: number;
   acceptedScore: number;
   activityWeek: number;
@@ -37,7 +40,7 @@ export type ReportActionState = {
   status: "idle" | "error" | "success";
   message: string | null;
   fieldErrors?: Partial<
-    Record<"friendAlias" | "is3x5" | "missionId" | "story", string>
+    Record<"friendAlias" | "is3x5" | "missionId" | "story" | "photo", string>
   >;
   result?: ReportSuccess;
 };

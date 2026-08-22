@@ -1,9 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
+
+import { createClient } from "@/lib/supabase/client";
 
 import { submitReport } from "./actions";
+import { preparePhoto, type PreparedPhoto } from "./photo";
+import { addPhotoFieldsToReportPayload } from "./submission-payload";
 import type {
   ReportActionState,
   ReportMission,
@@ -35,6 +46,18 @@ export function ReportSuccessState({ result }: { result: ReportSuccess }) {
 
       <div className="space-y-5 p-5">
         <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-2xl bg-brand-soft px-4 py-4">
+            <p className="text-xs font-bold text-muted">任務</p>
+            <p className="mt-1 text-2xl font-black text-brand">
+              {result.missionScore}步
+            </p>
+          </div>
+          <div className="rounded-2xl bg-brand-soft px-4 py-4">
+            <p className="text-xs font-bold text-muted">照片 BONUS</p>
+            <p className="mt-1 text-2xl font-black text-brand">
+              +{result.photoBonus}步
+            </p>
+          </div>
           <div className="rounded-2xl bg-brand-soft px-4 py-4">
             <p className="text-xs font-bold text-muted">本次完成</p>
             <p className="mt-1 text-2xl font-black text-brand">{result.rawScore}步</p>
@@ -90,6 +113,14 @@ export function ReportSuccessState({ result }: { result: ReportSuccess }) {
           >
             看大富翁地圖
           </Link>
+          {result.hasPhoto ? (
+            <Link
+              href="/photos"
+              className="flex h-12 items-center justify-center rounded-2xl border border-border text-base font-black text-foreground"
+            >
+              看看照片牆
+            </Link>
+          ) : null}
         </div>
       </div>
     </section>
@@ -105,7 +136,115 @@ export function ReportForm({
 }) {
   const [selectedMissionId, setSelectedMissionId] = useState<number | null>(null);
   const [is3x5, setIs3x5] = useState<boolean | null>(null);
+  const [photo, setPhoto] = useState<(PreparedPhoto & { previewUrl: string }) | null>(
+    null,
+  );
+  const [photoConsent, setPhotoConsent] = useState(false);
+  const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const submittingRef = useRef(false);
   const [state, formAction, isPending] = useActionState(submitReport, initialState);
+
+  useEffect(() => {
+    return () => {
+      if (photo) URL.revokeObjectURL(photo.previewUrl);
+    };
+  }, [photo]);
+
+  useEffect(() => {
+    if (!isPending) submittingRef.current = false;
+  }, [isPending]);
+
+  const isBusy = isPending || isUploadingPhoto || isProcessingPhoto;
+
+  async function handlePhotoChange(file: File | undefined) {
+    if (!file) return;
+    setPhotoError(null);
+    setIsProcessingPhoto(true);
+    try {
+      const prepared = await preparePhoto(file);
+      setPhoto({ ...prepared, previewUrl: URL.createObjectURL(prepared.blob) });
+      setPhotoConsent(false);
+    } catch (error) {
+      setPhoto(null);
+      setPhotoConsent(false);
+      setPhotoError(
+        error instanceof Error
+          ? error.message
+          : "目前無法處理這張照片，請改用 JPG、PNG 或 WebP。",
+      );
+    } finally {
+      setIsProcessingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  function removePhoto() {
+    setPhoto(null);
+    setPhotoConsent(false);
+    setPhotoError(null);
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (submittingRef.current || isBusy) return;
+
+    if (photo && !photoConsent) {
+      setPhotoError("請確認已取得照片中人物同意，並同意用於活動照片牆。");
+      return;
+    }
+
+    const form = event.currentTarget;
+    // Take the complete snapshot before upload state disables form controls.
+    // Disabled controls are intentionally omitted by the FormData constructor.
+    const payload = new FormData(form);
+    submittingRef.current = true;
+    setPhotoError(null);
+    let uploadedPath: string | null = null;
+
+    try {
+      if (photo) {
+        setIsUploadingPhoto(true);
+        const supabase = createClient();
+        const { data, error: userError } = await supabase.auth.getUser();
+        if (userError || !data.user) throw new Error("AUTH_REQUIRED");
+
+        uploadedPath = `${data.user.id}/${crypto.randomUUID()}.${photo.extension}`;
+        const { error: uploadError } = await supabase.storage
+          .from("mission-photos")
+          .upload(uploadedPath, photo.blob, {
+            cacheControl: "3600",
+            contentType: photo.mimeType,
+            upsert: false,
+          });
+        if (uploadError) {
+          console.error("Unable to upload mission photo", uploadError);
+          throw new Error("UPLOAD_FAILED");
+        }
+      }
+
+      addPhotoFieldsToReportPayload(payload, uploadedPath, photoConsent);
+      if (process.env.NODE_ENV !== "production") {
+        console.debug(
+          "Submitting report fields",
+          Array.from(new Set(payload.keys())),
+        );
+      }
+      setIsUploadingPhoto(false);
+      startTransition(() => formAction(payload));
+    } catch (error) {
+      console.error("Mission photo preparation failed", error);
+      submittingRef.current = false;
+      setIsUploadingPhoto(false);
+      setPhotoError(
+        error instanceof Error && error.message === "AUTH_REQUIRED"
+          ? "登入狀態已失效，請重新整理後再試。"
+          : "照片上傳沒有成功，請重新選擇照片後再試一次。",
+      );
+    }
+  }
 
   if (state.status === "success" && state.result) {
     return <ReportSuccessState result={state.result} />;
@@ -114,12 +253,21 @@ export function ReportForm({
   const selectedMission = missions.find(
     (mission) => mission.id === selectedMissionId,
   );
-  const estimatedScore = selectedMission
+  const estimatedMissionScore = selectedMission
     ? selectedMission.baseScore * (is3x5 ? 2 : 1)
     : null;
+  const estimatedScore =
+    estimatedMissionScore === null
+      ? null
+      : estimatedMissionScore + (photo ? 3 : 0);
 
   return (
-    <form action={formAction} aria-busy={isPending} className="mt-7 space-y-7">
+    <form
+      action={formAction}
+      onSubmit={handleSubmit}
+      aria-busy={isBusy}
+      className="mt-7 space-y-7"
+    >
       <section className="rounded-3xl border border-border bg-surface p-5 shadow-sm">
         <label htmlFor="friend_alias" className="block text-base font-black">
           這次關心誰？
@@ -131,7 +279,7 @@ export function ReportForm({
           required
           maxLength={80}
           placeholder="小明"
-          disabled={isPending}
+          disabled={isBusy}
           aria-describedby={
             state.fieldErrors?.friendAlias ? "friend-alias-error" : undefined
           }
@@ -174,7 +322,7 @@ export function ReportForm({
                   name="is_3x5"
                   value={String(option.value)}
                   required
-                  disabled={isPending}
+                  disabled={isBusy}
                   checked={selected}
                   onChange={() => setIs3x5(option.value)}
                   className="size-5 shrink-0 accent-brand"
@@ -217,7 +365,7 @@ export function ReportForm({
                     name="mission_id"
                     value={mission.id}
                     required
-                    disabled={isPending}
+                    disabled={isBusy}
                     checked={selected}
                     onChange={() => setSelectedMissionId(mission.id)}
                     className="mt-0.5 size-5 shrink-0 accent-brand"
@@ -245,6 +393,80 @@ export function ReportForm({
         ) : null}
       </fieldset>
 
+      <section className="overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm">
+        <h2 className="text-base font-black">📸 留下這次的足跡</h2>
+        <p className="mt-1 text-xs font-semibold leading-5 text-muted">
+          上傳一張這次關懷的照片，BONUS +3步
+        </p>
+
+        {photo ? (
+          <div className="mt-4">
+            {/* Blob previews are local-only and do not pass through Next Image. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={photo.previewUrl}
+              alt="準備上傳的關懷照片預覽"
+              className="aspect-[4/5] w-full rounded-2xl bg-background object-cover"
+            />
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                disabled={isBusy}
+                onClick={() => fileInputRef.current?.click()}
+                className="h-11 rounded-2xl border border-border text-sm font-black disabled:opacity-50"
+              >
+                更換照片
+              </button>
+              <button
+                type="button"
+                disabled={isBusy}
+                onClick={removePhoto}
+                className="h-11 rounded-2xl border border-red-100 text-sm font-black text-red-600 disabled:opacity-50"
+              >
+                移除照片
+              </button>
+            </div>
+            <label className="mt-4 flex items-start gap-3 rounded-2xl bg-brand-soft p-3.5 text-sm font-bold leading-6">
+              <input
+                type="checkbox"
+                checked={photoConsent}
+                onChange={(event) => setPhotoConsent(event.target.checked)}
+                disabled={isBusy}
+                className="mt-0.5 size-5 shrink-0 accent-brand"
+              />
+              <span>我已取得照片中人物同意，並同意照片用於活動照片牆。</span>
+            </label>
+          </div>
+        ) : (
+          <button
+            type="button"
+            disabled={isBusy}
+            onClick={() => fileInputRef.current?.click()}
+            className="mt-4 flex h-12 w-full items-center justify-center rounded-2xl border border-brand bg-brand-soft text-sm font-black text-brand disabled:opacity-50"
+          >
+            {isProcessingPhoto ? "正在處理照片…" : "拍照 / 選擇照片"}
+          </button>
+        )}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          disabled={isBusy}
+          onChange={(event) => void handlePhotoChange(event.target.files?.[0])}
+          className="sr-only"
+          aria-label="拍照或選擇照片"
+        />
+        <p className="mt-3 text-xs font-semibold leading-5 text-muted">
+          支援 JPG、PNG、WebP；系統會先壓縮照片再上傳。照片為選填。
+        </p>
+        {photoError || state.fieldErrors?.photo ? (
+          <p role="alert" className="mt-2 text-sm font-bold leading-6 text-red-600">
+            {photoError ?? state.fieldErrors?.photo}
+          </p>
+        ) : null}
+      </section>
+
       <section className="rounded-3xl border border-border bg-surface p-5 shadow-sm">
         <label htmlFor="story" className="block text-base font-black">
           這次有什麼很神的事？
@@ -255,7 +477,7 @@ export function ReportForm({
           name="story"
           rows={5}
           maxLength={2000}
-          disabled={isPending}
+          disabled={isBusy}
           placeholder="我們原本只是一起喝飲料，結果他主動聊起最近生活中的需要……"
           className="mt-3 w-full min-w-0 resize-none rounded-2xl border border-border bg-white px-4 py-3 text-base leading-6 text-foreground outline-none transition focus:border-brand focus:ring-4 focus:ring-brand/10"
         />
@@ -265,7 +487,7 @@ export function ReportForm({
       </section>
 
       <section className="rounded-3xl bg-foreground p-5 text-white shadow-[0_10px_28px_rgba(29,39,36,0.18)]">
-        {selectedMission && estimatedScore !== null ? (
+        {selectedMission && estimatedScore !== null && estimatedMissionScore !== null ? (
           <>
             <p className="text-xs font-bold text-white/60">即時預估</p>
             <p className="mt-2 text-sm font-bold">任務：{selectedMission.name}</p>
@@ -274,6 +496,12 @@ export function ReportForm({
             </p>
             <p className="mt-1 text-sm text-white/75">
               3×5 加碼：{is3x5 ? "×2" : is3x5 === false ? "無" : "尚未選擇"}
+            </p>
+            <p className="mt-1 text-sm text-white/75">
+              任務小計：{estimatedMissionScore}步
+            </p>
+            <p className="mt-1 text-sm text-white/75">
+              照片 BONUS：{photo ? "+3步" : "無"}
             </p>
             <div className="mt-4 flex items-end justify-between gap-4 border-t border-white/15 pt-4">
               <span className="text-sm font-bold text-white/70">預估獲得</span>
@@ -301,10 +529,15 @@ export function ReportForm({
 
       <button
         type="submit"
-        disabled={isPending}
+        disabled={isBusy}
         className="flex h-13 w-full items-center justify-center rounded-2xl bg-brand px-5 text-base font-black text-white shadow-[0_8px_20px_rgba(23,124,101,0.22)] disabled:cursor-not-allowed disabled:bg-[#8ba59d] disabled:shadow-none"
       >
-        {isPending ? (
+        {isUploadingPhoto ? (
+          <span className="flex items-center gap-2">
+            <span className="size-4 animate-spin rounded-full border-2 border-white/35 border-t-white" />
+            正在上傳照片…
+          </span>
+        ) : isPending ? (
           <span className="flex items-center gap-2">
             <span className="size-4 animate-spin rounded-full border-2 border-white/35 border-t-white" />
             回報送出中…
@@ -319,7 +552,11 @@ export function ReportForm({
       </p>
 
       <span className="sr-only" aria-live="polite">
-        {isPending ? `正在為 ${profile.name} 送出回報` : ""}
+        {isUploadingPhoto
+          ? "正在上傳照片"
+          : isPending
+            ? `正在為 ${profile.name} 送出回報`
+            : ""}
       </span>
     </form>
   );

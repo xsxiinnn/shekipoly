@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 type NavigationItem = {
-  href: "/report" | "/map" | "/rules";
+  href: "/report" | "/map" | "/photos" | "/rules";
   label: string;
   icon: ReactNode;
 };
@@ -57,6 +57,24 @@ const navigationItems: NavigationItem[] = [
     ),
   },
   {
+    href: "/photos",
+    label: "照片牆",
+    icon: (
+      <svg
+        aria-hidden="true"
+        className={iconClassName}
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      >
+        <rect x="3.5" y="5" width="17" height="14" rx="2.5" />
+        <circle cx="9" cy="10" r="1.5" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="m5.5 17 4.5-4 3 2.5 2.5-2 3 3" />
+      </svg>
+    ),
+  },
+  {
     href: "/rules",
     label: "規則",
     icon: (
@@ -87,7 +105,7 @@ export function BottomNavigation() {
       aria-label="學生功能"
       className="fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-md border-t border-border bg-surface/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(29,39,36,0.06)] backdrop-blur"
     >
-      <ul className="grid grid-cols-3">
+      <ul className="grid grid-cols-4">
         {navigationItems.map((item) => {
           const isActive = pathname === item.href;
 
@@ -96,7 +114,7 @@ export function BottomNavigation() {
               <Link
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
-                className="relative flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl px-2 text-xs font-semibold"
+                className="relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-xs font-semibold"
               >
                 {isActive ? (
                   <motion.span

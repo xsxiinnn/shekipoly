@@ -1,0 +1,24 @@
+export type PhotoWallTeamGroup = {
+  id: number;
+  name: string;
+};
+
+export type PhotoWallItem = {
+  id: string;
+  signedUrl: string;
+  teamGroupName: string;
+  zoneName: string;
+  teamName: string;
+  missionName: string;
+  dateLabel: string;
+};
+
+export type PhotoWallData = {
+  teamGroups: PhotoWallTeamGroup[];
+  selectedTeamGroupId: number | null;
+  items: PhotoWallItem[];
+  page: number;
+  hasMore: boolean;
+  error: string | null;
+  errorKind: "session" | "profile" | "config" | "unknown" | null;
+};
