@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getSupabaseConfig, hasSupabaseConfig } from "./config";
+import { getProfileGateDestination } from "./profile-gate";
 
 const ONBOARDING_PATH = "/onboarding";
 
@@ -40,46 +41,22 @@ export async function updateSessionAndProfileGate(request: NextRequest) {
   const isEditingProfile =
     isOnboarding && request.nextUrl.searchParams.get("edit") === "1";
 
-  if (!userId) {
-    if (isOnboarding) {
-      return supabaseResponse;
-    }
+  const { data: profile } = userId
+    ? await supabase.from("profiles").select("id").eq("id", userId).maybeSingle()
+    : { data: null };
+  const destination = getProfileGateDestination({
+    hasUser: Boolean(userId),
+    hasProfile: Boolean(profile),
+    pathname,
+    isEditingProfile,
+    method: request.method,
+  });
 
-    const onboardingUrl = request.nextUrl.clone();
-    onboardingUrl.pathname = ONBOARDING_PATH;
-    onboardingUrl.search = "";
-    return copyResponseCookies(
-      supabaseResponse,
-      NextResponse.redirect(onboardingUrl),
-    );
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (!profile && !isOnboarding) {
-    const onboardingUrl = request.nextUrl.clone();
-    onboardingUrl.pathname = ONBOARDING_PATH;
-    onboardingUrl.search = "";
-    return copyResponseCookies(
-      supabaseResponse,
-      NextResponse.redirect(onboardingUrl),
-    );
-  }
-
-  if (
-    profile &&
-    isOnboarding &&
-    !isEditingProfile &&
-    request.method !== "POST"
-  ) {
-    const reportUrl = request.nextUrl.clone();
-    reportUrl.pathname = "/report";
-    reportUrl.search = "";
-    return copyResponseCookies(supabaseResponse, NextResponse.redirect(reportUrl));
+  if (destination !== "allow") {
+    const destinationUrl = request.nextUrl.clone();
+    destinationUrl.pathname = destination;
+    destinationUrl.search = "";
+    return copyResponseCookies(supabaseResponse, NextResponse.redirect(destinationUrl));
   }
 
   return supabaseResponse;

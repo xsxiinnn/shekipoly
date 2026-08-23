@@ -152,6 +152,7 @@ function TeamSheet({
   const specialLabel = SPECIAL_SQUARES[square];
 
   useEffect(() => {
+    const previouslyFocused = document.activeElement;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
@@ -165,6 +166,7 @@ function TeamSheet({
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
+      if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus();
     };
   }, [onClose]);
 
@@ -258,10 +260,10 @@ export function MapExperience({ teamGroups, initialTeamGroupId, error }: MapData
     return (
       <section className="mt-4 rounded-3xl border border-dashed border-border bg-surface/60 px-5 py-12 text-center">
         <p className="text-sm font-black text-foreground">
-          {error ? "地圖載入失敗" : "尚未設定團隊"}
+          {error ? "地圖載入失敗" : "目前還沒有小組開始前進。"}
         </p>
         <p className="mt-2 text-sm leading-6 text-muted">
-          {error ?? "請聯絡管理員完成團隊、區與小組設定。"}
+          {error ?? "完成第一筆關懷回報後，小組旗子就會出現在這裡。"}
         </p>
       </section>
     );
@@ -358,7 +360,7 @@ export function MapExperience({ teamGroups, initialTeamGroupId, error }: MapData
           </ul>
         ) : (
           <div className="rounded-3xl border border-dashed border-border bg-surface/60 px-5 py-10 text-center text-sm text-muted">
-            目前尚無小組進度
+            目前還沒有小組開始前進。
           </div>
         )}
       </section>

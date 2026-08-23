@@ -13,7 +13,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 
 import { submitReport } from "./actions";
-import { preparePhoto, type PreparedPhoto } from "./photo";
+import { hasHeicFileHint, preparePhoto, type PreparedPhoto } from "./photo";
 import { addPhotoFieldsToReportPayload } from "./submission-payload";
 import type {
   ReportActionState,
@@ -140,6 +140,7 @@ export function ReportForm({
     null,
   );
   const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
+  const [isProcessingIphonePhoto, setIsProcessingIphonePhoto] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -162,18 +163,22 @@ export function ReportForm({
     if (!file) return;
     setPhotoError(null);
     setIsProcessingPhoto(true);
+    setIsProcessingIphonePhoto(hasHeicFileHint(file.type, file.name));
     try {
-      const prepared = await preparePhoto(file);
+      const prepared = await preparePhoto(file, {
+        onHeicDetected: () => setIsProcessingIphonePhoto(true),
+      });
       setPhoto({ ...prepared, previewUrl: URL.createObjectURL(prepared.blob) });
     } catch (error) {
       setPhoto(null);
       setPhotoError(
         error instanceof Error
           ? error.message
-          : "目前無法處理這張照片，請改用 JPG、PNG 或 WebP。",
+          : "這張照片目前無法處理，請換一張照片或先將照片轉成 JPG 後再試一次。",
       );
     } finally {
       setIsProcessingPhoto(false);
+      setIsProcessingIphonePhoto(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
@@ -425,21 +430,28 @@ export function ReportForm({
             onClick={() => fileInputRef.current?.click()}
             className="mt-4 flex h-12 w-full items-center justify-center rounded-2xl border border-brand bg-brand-soft text-sm font-black text-brand disabled:opacity-50"
           >
-            {isProcessingPhoto ? "正在處理照片…" : "拍照 / 選擇照片"}
+            {isProcessingPhoto
+              ? isProcessingIphonePhoto
+                ? "正在處理 iPhone 照片…"
+                : "正在處理照片…"
+              : "拍照 / 選擇照片"}
           </button>
         )}
 
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/*"
           disabled={isBusy}
           onChange={(event) => void handlePhotoChange(event.target.files?.[0])}
           className="sr-only"
           aria-label="拍照或選擇照片"
         />
         <p className="mt-3 text-xs font-semibold leading-5 text-muted">
-          支援 JPG、PNG、WebP；系統會先壓縮照片再上傳。照片為選填。
+          支援 JPG、PNG、WebP、HEIC、HEIF；系統會先轉換與壓縮再上傳。照片為選填。
+        </p>
+        <p className="mt-2 rounded-2xl bg-amber-50 px-3 py-2.5 text-xs font-semibold leading-5 text-amber-900">
+          上傳前，請確認照片中的人物知道並同意出現在活動照片牆。
         </p>
         {photoError || state.fieldErrors?.photo ? (
           <p role="alert" className="mt-2 text-sm font-bold leading-6 text-red-600">
@@ -533,11 +545,15 @@ export function ReportForm({
       </p>
 
       <span className="sr-only" aria-live="polite">
-        {isUploadingPhoto
-          ? "正在上傳照片"
-          : isPending
-            ? `正在為 ${profile.name} 送出回報`
-            : ""}
+        {isProcessingPhoto
+          ? isProcessingIphonePhoto
+            ? "正在處理 iPhone 照片"
+            : "正在處理照片"
+          : isUploadingPhoto
+            ? "正在上傳照片"
+            : isPending
+              ? `正在為 ${profile.name} 送出回報`
+              : ""}
       </span>
     </form>
   );

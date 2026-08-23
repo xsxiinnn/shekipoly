@@ -7,6 +7,7 @@ import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
 import type { PhotoWallData, PhotoWallItem } from "./types";
+import { isPhotoWallEligible, normalizePhotoWallStory } from "./visibility";
 
 const PAGE_SIZE = 24;
 const SIGNED_URL_SECONDS = 60 * 60;
@@ -130,10 +131,14 @@ export async function getPhotoWallData(options: {
     const admin = createAdminClient();
     const { data: reports, error: reportsError, count } = await admin
       .from("reports")
-      .select("id, team_id, mission_id, photo_path, created_at", { count: "exact" })
+      .select(
+        "id, team_id, mission_id, photo_path, photo_is_valid, photo_visibility, photo_consent, status, created_at, story",
+        { count: "exact" },
+      )
       .eq("status", "active")
       .eq("photo_is_valid", true)
       .eq("photo_visibility", "visible")
+      .eq("photo_consent", true)
       .not("photo_path", "is", null)
       .in("team_id", selectedTeamIds)
       .order("created_at", { ascending: false })
@@ -163,7 +168,16 @@ export async function getPhotoWallData(options: {
 
     const items: PhotoWallItem[] = [];
     for (const report of reports ?? []) {
-      if (!report.photo_path) continue;
+      if (
+        !isPhotoWallEligible({
+          status: report.status,
+          photoPath: report.photo_path,
+          photoIsValid: report.photo_is_valid,
+          photoVisibility: report.photo_visibility,
+          photoConsent: report.photo_consent,
+        }) ||
+        !report.photo_path
+      ) continue;
       const signedUrl = signedUrlByPath.get(report.photo_path);
       const team = teamById.get(report.team_id);
       const zone = team ? zoneById.get(team.zone_id) : null;
@@ -178,6 +192,7 @@ export async function getPhotoWallData(options: {
         teamName: team.name,
         missionName,
         dateLabel: dateFormatter.format(new Date(report.created_at)),
+        story: normalizePhotoWallStory(report.story),
       });
     }
 

@@ -4,16 +4,17 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test src/features/report/development-week.test.mts src/features/report/photo.test.mts src/features/report/photo-signature.test.mts src/features/report/submission-payload.test.mts src/features/admin/filters.test.mts src/features/admin/csv.test.mts"
+    "test": "node --experimental-strip-types --test src/features/activity/activity-status.test.mts src/features/report/development-week.test.mts src/features/report/photo.test.mts src/features/report/photo-signature.test.mts src/features/report/submission-payload.test.mts src/features/photos/visibility.test.mts src/features/admin/filters.test.mts src/features/admin/csv.test.mts src/lib/supabase/profile-gate.test.mts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.3",
     "framer-motion": "^13.1.0",
+    "heic-to": "^1.5.2",
     "next": "16.3.1",
     "react": "19.2.8",
     "react-dom": "19.2.8"

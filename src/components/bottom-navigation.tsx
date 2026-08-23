@@ -114,7 +114,7 @@ export function BottomNavigation() {
               <Link
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
-                className="relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-xs font-semibold"
+                className="relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
               >
                 {isActive ? (
                   <motion.span

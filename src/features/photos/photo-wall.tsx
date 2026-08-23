@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { PhotoWallData, PhotoWallItem } from "./types";
 
 export function PhotoWall({ data }: { data: PhotoWallData }) {
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoWallItem | null>(null);
+  const photoTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (!selectedPhoto) return;
@@ -18,6 +19,7 @@ export function PhotoWall({ data }: { data: PhotoWallData }) {
     return () => {
       document.body.style.overflow = "";
       window.removeEventListener("keydown", handleKeyDown);
+      photoTriggerRef.current?.focus();
     };
   }, [selectedPhoto]);
 
@@ -49,7 +51,10 @@ export function PhotoWall({ data }: { data: PhotoWallData }) {
             <button
               key={photo.id}
               type="button"
-              onClick={() => setSelectedPhoto(photo)}
+              onClick={(event) => {
+                photoTriggerRef.current = event.currentTarget;
+                setSelectedPhoto(photo);
+              }}
               className="min-w-0 overflow-hidden rounded-3xl border border-border bg-white text-left shadow-sm"
             >
               {/* Signed private URLs expire; native lazy-loading avoids eager full-wall downloads. */}
@@ -110,8 +115,8 @@ export function PhotoWall({ data }: { data: PhotoWallData }) {
             if (event.currentTarget === event.target) setSelectedPhoto(null);
           }}
         >
-          <div className="max-h-full w-full max-w-lg overflow-y-auto rounded-3xl bg-white shadow-2xl">
-            <div className="flex justify-end p-3 pb-0">
+          <div className="flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="z-10 flex shrink-0 justify-end border-b border-border bg-white p-3">
               <button
                 type="button"
                 onClick={() => setSelectedPhoto(null)}
@@ -122,19 +127,31 @@ export function PhotoWall({ data }: { data: PhotoWallData }) {
                 ×
               </button>
             </div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={selectedPhoto.signedUrl}
-              alt={`${selectedPhoto.teamName}的活動照片大圖`}
-              className="mt-2 max-h-[65dvh] w-full bg-background object-contain"
-            />
-            <div className="space-y-1 p-5 text-sm leading-6">
-              <p className="font-black">{selectedPhoto.teamGroupName}</p>
-              <p className="font-bold">
-                {selectedPhoto.zoneName}｜{selectedPhoto.teamName}
-              </p>
-              <p className="font-bold text-brand">{selectedPhoto.missionName}</p>
-              <p className="font-semibold text-muted">{selectedPhoto.dateLabel}</p>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={selectedPhoto.signedUrl}
+                alt={`${selectedPhoto.teamName}的活動照片大圖`}
+                className="max-h-[55dvh] w-full bg-background object-contain"
+              />
+              <div className="space-y-1 p-5 text-sm leading-6">
+                <p className="font-black">{selectedPhoto.teamGroupName}</p>
+                <p className="font-bold">
+                  {selectedPhoto.teamName}｜{selectedPhoto.zoneName}
+                </p>
+                <p className="font-bold text-brand">{selectedPhoto.missionName}</p>
+                <p className="font-semibold text-muted">{selectedPhoto.dateLabel}</p>
+                {selectedPhoto.story ? (
+                  <section className="mt-5 border-t border-border pt-5" aria-labelledby="photo-story-title">
+                    <h2 id="photo-story-title" className="font-black text-foreground">
+                      ✨ 這次發生的神故事
+                    </h2>
+                    <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-foreground">
+                      {selectedPhoto.story}
+                    </p>
+                  </section>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>

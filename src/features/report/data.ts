@@ -97,7 +97,10 @@ export async function getReportPageData(): Promise<ReportPageData> {
         teamName: team.name,
       },
       missions,
-      error: missions.length === 0 ? "目前尚未設定可回報的任務。" : null,
+      error:
+        missions.length === 0
+          ? "任務資料暫時無法載入，請稍後再試。"
+          : null,
       errorKind: missions.length === 0 ? "missions" : null,
     };
   } catch (error) {

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { ActivityStatusBanner } from "@/features/activity/activity-status-banner";
+import { getServerActivityStatus } from "@/features/activity/server";
 import { getReportPageData } from "@/features/report/data";
 import { ReportForm } from "@/features/report/report-form";
 
@@ -10,7 +12,10 @@ export const metadata: Metadata = {
 };
 
 export default async function ReportPage() {
-  const data = await getReportPageData();
+  const [data, activityStatus] = await Promise.all([
+    getReportPageData(),
+    Promise.resolve(getServerActivityStatus()),
+  ]);
 
   if (data.errorKind === "session") {
     redirect("/onboarding");
@@ -27,6 +32,8 @@ export default async function ReportPage() {
           每一次關心都很重要，完成後由系統計算小組步數。
         </p>
       </header>
+
+      <ActivityStatusBanner status={activityStatus} />
 
       {data.profile ? (
         <section className="mt-5 rounded-3xl bg-brand p-5 text-white shadow-[0_10px_28px_rgba(23,124,101,0.2)]">

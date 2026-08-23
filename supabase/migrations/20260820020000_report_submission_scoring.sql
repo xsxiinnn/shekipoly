@@ -20,11 +20,11 @@ set
 from (
   values
     (1::smallint, '任務一｜找到他', '打招呼、有聊天、關心近況', 1::smallint),
-    (2::smallint, '任務二｜祝福他', '送小東西、小點心、飲料', 1::smallint),
-    (3::smallint, '任務三｜探訪他', '成功邀約到小組長來探訪', 2::smallint),
-    (4::smallint, '任務四｜為他禱告', '發現朋友需求並為他祝福禱告', 2::smallint),
-    (5::smallint, '任務五｜來烤肉', '邀請他來教會參加烤肉', 3::smallint),
-    (6::smallint, '任務六｜來教會', '邀請他來教會參加崇拜／小組', 3::smallint)
+    (2::smallint, '任務二｜祝福他', '送小東西、小點心、一起吃飯', 1::smallint),
+    (3::smallint, '任務三｜探訪他', '成功揪團/邀約到小組長來探訪', 2::smallint),
+    (4::smallint, '任務四｜為他禱告', '發現朋友需求並實體為他祝福禱告', 2::smallint),
+    (5::smallint, '任務五｜來烤肉', '成功邀請他來教會參加烤肉', 3::smallint),
+    (6::smallint, '任務六｜來教會', '成功邀請他來教會參加崇拜／小組', 3::smallint)
 ) as seed(id, name, description, base_score)
 where missions.id = seed.id;
 

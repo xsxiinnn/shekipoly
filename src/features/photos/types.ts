@@ -11,6 +11,7 @@ export type PhotoWallItem = {
   teamName: string;
   missionName: string;
   dateLabel: string;
+  story: string | null;
 };
 
 export type PhotoWallData = {
