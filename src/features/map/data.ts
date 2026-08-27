@@ -4,6 +4,7 @@ import { unstable_rethrow } from "next/navigation";
 
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
+import { getServerActivityDataScope } from "@/features/activity/server";
 
 import type { MapData, MapTeam, MapTeamGroup } from "./types";
 
@@ -36,13 +37,14 @@ function makeTeam(
   };
 }
 
-function getEmptyData(error: string | null = null): MapData {
-  return { teamGroups: [], initialTeamGroupId: null, error };
+function getEmptyData(error: string | null = null, isTestMode = false): MapData {
+  return { teamGroups: [], initialTeamGroupId: null, error, isTestMode };
 }
 
 export async function getMapData(): Promise<MapData> {
+  const { isTestMode } = getServerActivityDataScope();
   if (!hasSupabaseConfig()) {
-    return getEmptyData("尚未設定 Supabase 連線。");
+    return getEmptyData("尚未設定 Supabase 連線。", isTestMode);
   }
 
   try {
@@ -80,7 +82,8 @@ export async function getMapData(): Promise<MapData> {
           .from("team_map_progress")
           .select(
             "team_id, accepted_total, current_square, steps_to_next_square",
-          ),
+          )
+          .eq("is_prelaunch_test", isTestMode),
         profileQuery,
       ]);
 
@@ -144,7 +147,7 @@ export async function getMapData(): Promise<MapData> {
     );
 
     if (teamGroups.length === 0) {
-      return getEmptyData();
+      return getEmptyData(null, isTestMode);
     }
 
     const profileTeam = (teamsResult.data ?? []).find(
@@ -163,10 +166,11 @@ export async function getMapData(): Promise<MapData> {
         ? (profileTeamGroupId ?? teamGroups[0].id)
         : teamGroups[0].id,
       error: null,
+      isTestMode,
     };
   } catch (error) {
     unstable_rethrow(error);
     console.error("Unable to load map data", error);
-    return getEmptyData("目前無法載入地圖資料。");
+    return getEmptyData("目前無法載入地圖資料。", isTestMode);
   }
 }

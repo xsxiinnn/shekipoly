@@ -15,8 +15,10 @@ test("admin filters accept only supported values", () => {
     status: "void",
     visibility: "hidden",
     search: "  永恩  ",
+    scope: "test",
   });
   assert.deepEqual(filters, {
+    dataScope: "test",
     activityWeek: 2,
     teamGroupId: 3,
     zoneId: 9,
@@ -29,6 +31,7 @@ test("admin filters accept only supported values", () => {
     search: "永恩",
   });
   assert.match(filtersToSearchParams(filters).toString(), /week=2/);
+  assert.match(filtersToSearchParams(filters).toString(), /scope=test/);
 });
 
 test("invalid admin filters fail closed to no filter", () => {
@@ -44,4 +47,5 @@ test("invalid admin filters fail closed to no filter", () => {
   assert.equal(filters.is3x5, null);
   assert.equal(filters.status, null);
   assert.equal(filters.photoVisibility, null);
+  assert.equal(filters.dataScope, "official");
 });

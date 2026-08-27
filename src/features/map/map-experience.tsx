@@ -279,7 +279,7 @@ export function MapExperience({ teamGroups, initialTeamGroupId, error }: MapData
         <div className="mt-1 flex items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl font-black tracking-tight">同行地圖</h1>
-            <p className="mt-1 text-sm text-muted">每累積 5 步，旗子前進 1 格</p>
+            <p className="mt-1 text-sm text-muted">每累積 10 步，旗子前進 1 格</p>
           </div>
           <span className="shrink-0 rounded-full bg-brand-soft px-2.5 py-1 text-xs font-bold text-brand">
             36 格

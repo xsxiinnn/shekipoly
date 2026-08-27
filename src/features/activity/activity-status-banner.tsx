@@ -1,6 +1,20 @@
 import type { ActivityStatus } from "./activity-status";
 
 export function ActivityStatusBanner({ status }: { status: ActivityStatus }) {
+  if (status.isPrelaunchTest) {
+    return (
+      <aside
+        aria-label="預上線測試模式"
+        className="mt-5 rounded-2xl border border-violet-300 bg-violet-50 px-4 py-3 text-violet-950"
+      >
+        <p className="text-sm font-black">🧪 預上線完整體驗</p>
+        <p className="mt-1 text-xs font-semibold leading-5">
+          現在看到的回報、地圖與照片牆就是正式效果；8/31 將從 0 開始正式計分。
+        </p>
+      </aside>
+    );
+  }
+
   const message =
     status.phase === "before"
       ? "活動將於 8/31 開始 🚩"

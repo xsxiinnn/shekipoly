@@ -9,6 +9,7 @@ export type PhotoWallItem = {
   teamGroupName: string;
   zoneName: string;
   teamName: string;
+  reporterName: string;
   missionName: string;
   dateLabel: string;
   story: string | null;
@@ -22,4 +23,5 @@ export type PhotoWallData = {
   hasMore: boolean;
   error: string | null;
   errorKind: "session" | "profile" | "config" | "unknown" | null;
+  isTestMode: boolean;
 };

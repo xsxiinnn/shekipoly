@@ -36,7 +36,7 @@ Production code ignores `DEV_ACTIVITY_WEEK` when `NODE_ENV=production`, but omit
 - [ ] Production deployment completes without build warnings that indicate missing variables or failed routes.
 - [ ] Open the final production URL in a clean browser and complete the student smoke flow.
 - [ ] Test iPhone Safari and Android Chrome at the viewport/device sizes in `docs/production-smoke-test.md`.
-- [ ] Verify report score, map movement, and weekly cap from the admin view.
+- [ ] Verify full report score and one-square-per-10-steps map movement from the admin view.
 - [ ] Upload a photo, confirm the signed URL loads, then reload after expiration to confirm a new URL is generated.
 - [ ] Verify admin login, dashboard, reports, void/recalculation, photo moderation, and CSV.
 - [ ] Verify a student is rejected from `/admin`.

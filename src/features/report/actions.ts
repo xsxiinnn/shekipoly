@@ -7,6 +7,7 @@ import {
   hasSupabaseAdminConfig,
 } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getServerPrelaunchTestMode } from "@/features/activity/server";
 
 import { resolveDevelopmentActivityWeek } from "./development-week";
 import { detectPhotoMime, photoMimeMatchesPath } from "./photo-signature";
@@ -40,6 +41,7 @@ function toReportSuccess(value: Record<string, unknown>): ReportSuccess | null {
     typeof value.mission_name !== "string" ||
     typeof value.is_3x5 !== "boolean" ||
     typeof value.has_photo !== "boolean" ||
+    typeof value.is_prelaunch_test !== "boolean" ||
     typeof value.team_name !== "string" ||
     requiredNumbers.some((key) => typeof value[key] !== "number")
   ) {
@@ -61,6 +63,7 @@ function toReportSuccess(value: Record<string, unknown>): ReportSuccess | null {
     teamTotalScore: value.team_total_score as number,
     currentSquare: value.current_square as number,
     stepsToNextSquare: value.steps_to_next_square as number,
+    isTest: value.is_prelaunch_test,
   };
 }
 
@@ -118,7 +121,11 @@ async function verifyUploadedPhotoBytes(
 
   const signature = new Uint8Array(await data.slice(0, 16).arrayBuffer());
   const detectedMime = detectPhotoMime(signature);
-  return Boolean(detectedMime && photoMimeMatchesPath(detectedMime, photoPath));
+  return Boolean(
+    detectedMime &&
+      detectedMime !== "image/png" &&
+      photoMimeMatchesPath(detectedMime, photoPath),
+  );
 }
 
 export async function submitReport(
@@ -171,6 +178,16 @@ export async function submitReport(
       };
     }
 
+    const prelaunch = getServerPrelaunchTestMode();
+    if (prelaunch.error) {
+      console.error("Invalid server-only PRELAUNCH_TEST_WEEK; expected 1 through 6.");
+      await cleanupUploadedPhoto(supabase, authenticatedUserId, photoPath);
+      return {
+        status: "error",
+        message: "目前的預上線測試設定有誤，請聯絡管理同工。",
+      };
+    }
+
     const developmentWeek = resolveDevelopmentActivityWeek(
       process.env.NODE_ENV,
       process.env.DEV_ACTIVITY_WEEK,
@@ -185,7 +202,7 @@ export async function submitReport(
     }
 
     if (
-      (developmentWeek.week !== null || photoPath !== null) &&
+      (prelaunch.enabled || developmentWeek.week !== null || photoPath !== null) &&
       !hasSupabaseAdminConfig()
     ) {
       console.error(
@@ -208,33 +225,18 @@ export async function submitReport(
     }
 
     let rpcResult;
-    if (developmentWeek.week !== null) {
-      rpcResult = photoPath
-        ? await createAdminClient().rpc("submit_report_for_development_v2", {
-            p_reporter_id: authenticatedUserId,
-            p_friend_alias: friendAlias,
-            p_mission_id: missionId!,
-            p_is_3x5: is3x5!,
-            p_story: story,
-            p_activity_week: developmentWeek.week,
-            p_photo_path: photoPath,
-          })
-        : await createAdminClient().rpc("submit_report_for_development", {
-            p_reporter_id: authenticatedUserId,
-            p_friend_alias: friendAlias,
-            p_mission_id: missionId!,
-            p_is_3x5: is3x5!,
-            p_story: story,
-            p_activity_week: developmentWeek.week,
-          });
-    } else if (photoPath) {
-      rpcResult = await createAdminClient().rpc("submit_report_with_photo", {
+    if (prelaunch.enabled || developmentWeek.week !== null || photoPath) {
+      rpcResult = await createAdminClient().rpc("submit_report_trusted", {
         p_reporter_id: authenticatedUserId,
         p_friend_alias: friendAlias,
         p_mission_id: missionId!,
         p_is_3x5: is3x5!,
         p_story: story,
         p_photo_path: photoPath,
+        p_activity_week_override: prelaunch.enabled
+          ? prelaunch.week
+          : developmentWeek.week,
+        p_is_test: prelaunch.enabled || developmentWeek.week !== null,
       });
     } else {
       rpcResult = await supabase.rpc("submit_report", {

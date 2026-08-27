@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   getFormalActivityStatus,
+  isTestActivityStatus,
   resolveActivityStatus,
 } from "./activity-status.ts";
 
@@ -18,13 +19,36 @@ test("production ignores DEV_ACTIVITY_WEEK before launch", () => {
 });
 
 test("development accepts a valid server-only override", () => {
-  assert.deepEqual(
-    resolveActivityStatus({
+  const status = resolveActivityStatus({
       now: new Date("2026-08-21T12:00:00+08:00"),
       nodeEnv: "development",
       developmentWeek: "2",
+    });
+  assert.deepEqual(
+    status,
+    { phase: "active", week: 2, isDevelopmentOverride: true, isPrelaunchTest: false },
+  );
+  assert.equal(isTestActivityStatus(status), true);
+});
+
+test("formal activity uses the official data scope", () => {
+  assert.equal(
+    isTestActivityStatus(
+      getFormalActivityStatus(new Date("2026-09-10T12:00:00+08:00")),
+    ),
+    false,
+  );
+});
+
+test("prelaunch activity uses the isolated test data scope", () => {
+  assert.equal(
+    isTestActivityStatus({
+      phase: "active",
+      week: 1,
+      isDevelopmentOverride: false,
+      isPrelaunchTest: true,
     }),
-    { phase: "active", week: 2, isDevelopmentOverride: true },
+    true,
   );
 });
 

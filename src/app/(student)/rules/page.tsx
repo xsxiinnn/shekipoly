@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { ACTIVITY_WEEKS } from "@/features/activity/activity-status";
 import { getRulesData } from "@/features/rules/data";
+import { getServerActivityDataScope } from "@/features/activity/server";
 
 export const metadata: Metadata = {
   title: "遊戲規則",
@@ -24,7 +25,10 @@ function SectionTitle({ eyebrow, children }: { eyebrow: string; children: React.
 }
 
 export default async function RulesPage() {
-  const data = await getRulesData();
+  const [data, activityScope] = await Promise.all([
+    getRulesData(),
+    Promise.resolve(getServerActivityDataScope()),
+  ]);
 
   return (
     <div className="min-w-0 overflow-x-clip pb-4 pt-2">
@@ -33,6 +37,12 @@ export default async function RulesPage() {
         <h1 className="mt-1 text-3xl font-black tracking-tight">遊戲規則</h1>
         <p className="mt-2 text-base font-bold text-muted">一起走進他的世界</p>
       </header>
+
+      {activityScope.isTestMode ? (
+        <aside className="mt-5 rounded-2xl border border-violet-300 bg-violet-50 px-4 py-3 text-sm font-black text-violet-950">
+          🧪 目前為測試模式，測試資料不會計入正式活動。
+        </aside>
+      ) : null}
 
       <section className="mt-7" aria-labelledby="how-to-play-title">
         <div id="how-to-play-title"><SectionTitle eyebrow="HOW TO PLAY">怎麼玩</SectionTitle></div>
@@ -47,9 +57,9 @@ export default async function RulesPage() {
           ))}
         </ol>
         <div className="mt-4 rounded-3xl bg-foreground p-5 text-sm font-bold leading-7 text-white">
-          <p>每 5 步，大富翁前進 1 格。</p>
-          <p>每小組每週最多計 30 步。</p>
-          <p>六週最高可以走完 36 格。</p>
+          <p>每 10 步，大富翁前進 1 格。</p>
+          <p>每小組每週步數不設上限。</p>
+          <p>地圖最高為第 36 格。</p>
         </div>
       </section>
 
@@ -116,9 +126,9 @@ export default async function RulesPage() {
             </p>
           </article>
           <article className="rounded-3xl border border-border bg-white p-5 shadow-sm">
-            <h3 className="font-black">每小組每週上限 30 步</h3>
+            <h3 className="font-black">每週步數不設上限</h3>
             <p className="mt-2 text-sm font-semibold leading-6 text-muted">
-              達到 30 步後仍可繼續關懷與回報。系統會保存實際行動步數，但大富翁本週最多計入 30 步。
+              每一筆有效關懷都會完整計入小組累積步數，不會因為當週回報較多而被截掉。
             </p>
           </article>
         </div>

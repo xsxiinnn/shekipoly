@@ -26,13 +26,13 @@ Run this checklist against the final Vercel production URL on a real iPhone and 
 - [ ] Invalid/oversized/unsupported photos show a friendly error without clearing the form.
 - [ ] Submit shows progress, is disabled while busy, and a double tap creates one report.
 - [ ] Success state shows raw steps, accepted steps, weekly total, map square, and remainder.
-- [ ] Team weekly accepted steps never exceed 30; capped reports still save.
+- [ ] Every active report is fully counted; weekly accepted steps have no cap.
 - [ ] `/map` displays the correct team flag position and no horizontal scrolling.
 - [ ] `/photos` defaults to the student's team group and can switch groups.
-- [ ] Photo wall excludes hidden photos, void reports, invalid photos, and photos without consent.
-- [ ] Photo wall never shows friend alias, reporter name, story, user ID, or raw storage path.
+- [ ] Photo wall excludes hidden photos, void reports, and invalid photos.
+- [ ] Photo wall shows the reporter name and story, but never shows friend alias, user ID, email, or raw storage path.
 - [ ] Signed images load, lazy-load, open in the dialog, close with button/backdrop/Escape, and can be reopened after URL renewal.
-- [ ] `/rules` shows the six database missions, four database team groups/zones, photo bonus, weekly cap, and official dates.
+- [ ] `/rules` shows the six database missions, four database team groups/zones, photo bonus, unlimited weekly steps, the 10-step map rule, and official dates.
 - [ ] Bottom navigation has exactly Report, Map, Photos, and Rules with a visible active state.
 
 ## Admin
@@ -40,7 +40,7 @@ Run this checklist against the final Vercel production URL on a real iPhone and 
 - [ ] Email/password admin login succeeds and redirects to `/admin`.
 - [ ] Dashboard KPIs, week filter, team overview, and team progress load.
 - [ ] Reports filters, search, pagination, detail, and Taipei timestamps work.
-- [ ] Voiding a capped report keeps the record, records the reason, and reallocates that team/week to at most 30.
+- [ ] Voiding a report keeps the record, records the reason, and removes its score from that team/week.
 - [ ] Map reflects the recalculated accepted scores after void.
 - [ ] Photo hide removes it from the student wall without changing score.
 - [ ] Eligible photo restore returns it to the student wall.
@@ -52,7 +52,7 @@ Run this checklist against the final Vercel production URL on a real iPhone and 
 - [ ] A normal anonymous-auth student opening `/admin` or invoking an admin action is rejected.
 - [ ] Production ignores `DEV_ACTIVITY_WEEK` even if it is accidentally configured.
 - [ ] Outside the formal dates, report submission returns the friendly closed-period message.
-- [ ] Browser source/network responses expose no service-role key, auth token, raw photo path, friend alias, or private story on student pages.
+- [ ] Browser source/network responses expose no service-role key, auth token, raw photo path, friend alias, or email; photo-wall story and reporter name are the only approved participant details.
 - [ ] A student cannot upload into another user's folder or reuse another photo path for bonus.
 
 ## Mobile

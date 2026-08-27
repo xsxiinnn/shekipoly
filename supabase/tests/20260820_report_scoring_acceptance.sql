@@ -110,19 +110,19 @@ do $$
 declare
   case_e record;
   case_f record;
-  weekly_score smallint;
+  weekly_score integer;
 begin
   select raw_score, accepted_score into case_e
   from public.reports where friend_alias = 'case-e';
   select raw_score, accepted_score into case_f
   from public.reports where friend_alias = 'case-f';
 
-  if case_e.raw_score <> 6 or case_e.accepted_score <> 2 then
+  if case_e.raw_score <> 6 or case_e.accepted_score <> 6 then
     raise exception 'Case E mismatch: raw %, accepted %',
       case_e.raw_score, case_e.accepted_score;
   end if;
 
-  if case_f.raw_score <> 6 or case_f.accepted_score <> 0 then
+  if case_f.raw_score <> 6 or case_f.accepted_score <> 6 then
     raise exception 'Case F mismatch: raw %, accepted %',
       case_f.raw_score, case_f.accepted_score;
   end if;
@@ -133,8 +133,8 @@ begin
   where profiles.id = '10000000-0000-0000-0000-000000000002'
     and team_progress.activity_week = 1;
 
-  if weekly_score <> 30 then
-    raise exception 'Weekly cap mismatch: %', weekly_score;
+  if weekly_score <> 40 then
+    raise exception 'Unlimited weekly total mismatch: %', weekly_score;
   end if;
 
   if not exists (
@@ -187,7 +187,7 @@ $$;
 
 -- Verify the shared map formula at its upper bound.
 update public.team_progress
-set accepted_score = 30
+set accepted_score = 60
 where team_id = (
   select team_id
   from public.profiles
@@ -206,7 +206,7 @@ begin
     where id = '10000000-0000-0000-0000-000000000001'
   );
 
-  if progress.accepted_total <> 180
+  if progress.accepted_total <> 360
     or progress.current_square <> 36
     or progress.steps_to_next_square <> 0 then
     raise exception 'Map upper-bound mismatch: total %, square %, next %',

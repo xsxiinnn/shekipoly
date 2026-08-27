@@ -34,6 +34,7 @@ export type ReportSuccess = {
   teamTotalScore: number;
   currentSquare: number;
   stepsToNextSquare: number;
+  isTest: boolean;
 };
 
 export type ReportActionState = {

@@ -8,9 +8,16 @@ export const ACTIVITY_WEEKS = [
 ] as const;
 
 export type ActivityStatus =
-  | { phase: "before"; week: null; isDevelopmentOverride: false }
-  | { phase: "active"; week: number; isDevelopmentOverride: boolean }
-  | { phase: "after"; week: null; isDevelopmentOverride: false };
+  | { phase: "before"; week: null; isDevelopmentOverride: false; isPrelaunchTest: false }
+  | { phase: "active"; week: number; isDevelopmentOverride: boolean; isPrelaunchTest: boolean }
+  | { phase: "after"; week: null; isDevelopmentOverride: false; isPrelaunchTest: false };
+
+export function isTestActivityStatus(status: ActivityStatus) {
+  return (
+    status.phase === "active" &&
+    (status.isDevelopmentOverride || status.isPrelaunchTest)
+  );
+}
 
 const ACTIVITY_START_UTC = Date.parse("2026-08-30T16:00:00.000Z");
 const ACTIVITY_END_UTC = Date.parse("2026-10-11T16:00:00.000Z");
@@ -20,16 +27,17 @@ const WEEK_IN_MILLISECONDS = 7 * 24 * 60 * 60 * 1000;
 export function getFormalActivityStatus(now: Date): ActivityStatus {
   const timestamp = now.getTime();
   if (timestamp < ACTIVITY_START_UTC) {
-    return { phase: "before", week: null, isDevelopmentOverride: false };
+    return { phase: "before", week: null, isDevelopmentOverride: false, isPrelaunchTest: false };
   }
   if (timestamp >= ACTIVITY_END_UTC) {
-    return { phase: "after", week: null, isDevelopmentOverride: false };
+    return { phase: "after", week: null, isDevelopmentOverride: false, isPrelaunchTest: false };
   }
 
   return {
     phase: "active",
     week: Math.floor((timestamp - ACTIVITY_START_UTC) / WEEK_IN_MILLISECONDS) + 1,
     isDevelopmentOverride: false,
+    isPrelaunchTest: false,
   };
 }
 
@@ -41,7 +49,7 @@ export function resolveActivityStatus(options: {
   if (options.nodeEnv !== "production" && options.developmentWeek) {
     const week = Number(options.developmentWeek);
     if (Number.isInteger(week) && week >= 1 && week <= 6) {
-      return { phase: "active", week, isDevelopmentOverride: true };
+      return { phase: "active", week, isDevelopmentOverride: true, isPrelaunchTest: false };
     }
   }
 

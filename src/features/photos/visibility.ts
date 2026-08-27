@@ -3,7 +3,6 @@ export type PhotoWallEligibility = {
   photoPath: string | null;
   photoIsValid: boolean;
   photoVisibility: string;
-  photoConsent: boolean;
 };
 
 export function isPhotoWallEligible(photo: PhotoWallEligibility) {
@@ -11,8 +10,7 @@ export function isPhotoWallEligible(photo: PhotoWallEligibility) {
     photo.status === "active" &&
     photo.photoPath !== null &&
     photo.photoIsValid &&
-    photo.photoVisibility === "visible" &&
-    photo.photoConsent
+    photo.photoVisibility === "visible"
   );
 }
 

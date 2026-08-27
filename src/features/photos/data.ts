@@ -5,6 +5,7 @@ import { unstable_rethrow } from "next/navigation";
 import { createAdminClient, hasSupabaseAdminConfig } from "@/lib/supabase/admin";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
+import { getServerActivityDataScope } from "@/features/activity/server";
 
 import type { PhotoWallData, PhotoWallItem } from "./types";
 import { isPhotoWallEligible, normalizePhotoWallStory } from "./visibility";
@@ -12,7 +13,7 @@ import { isPhotoWallEligible, normalizePhotoWallStory } from "./visibility";
 const PAGE_SIZE = 24;
 const SIGNED_URL_SECONDS = 60 * 60;
 
-function emptyData(error: string | null = null): PhotoWallData {
+function emptyData(error: string | null = null, isTestMode = false): PhotoWallData {
   return {
     teamGroups: [],
     selectedTeamGroupId: null,
@@ -21,6 +22,7 @@ function emptyData(error: string | null = null): PhotoWallData {
     hasMore: false,
     error,
     errorKind: null,
+    isTestMode,
   };
 }
 
@@ -33,8 +35,9 @@ export async function getPhotoWallData(options: {
   teamGroupId?: string;
   page?: string;
 }): Promise<PhotoWallData> {
+  const { isTestMode } = getServerActivityDataScope();
   if (!hasSupabaseConfig()) {
-    return { ...emptyData("尚未設定 Supabase 連線。"), errorKind: "config" };
+    return { ...emptyData("尚未設定 Supabase 連線。", isTestMode), errorKind: "config" };
   }
 
   try {
@@ -42,13 +45,13 @@ export async function getPhotoWallData(options: {
     const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
     const userId = claimsData?.claims?.sub;
     if (claimsError || !userId) {
-      return { ...emptyData(), errorKind: "session" };
+      return { ...emptyData(null, isTestMode), errorKind: "session" };
     }
 
     if (!hasSupabaseAdminConfig()) {
       console.error("Photo wall requires server-only SUPABASE_SERVICE_ROLE_KEY.");
       return {
-        ...emptyData("照片牆尚未完成安全連線設定。"),
+        ...emptyData("照片牆尚未完成安全連線設定。", isTestMode),
         errorKind: "config",
       };
     }
@@ -80,7 +83,7 @@ export async function getPhotoWallData(options: {
       missionsResult.error;
     if (referenceError) throw referenceError;
     if (!profileResult.data?.team_id) {
-      return { ...emptyData(), errorKind: "profile" };
+      return { ...emptyData(null, isTestMode), errorKind: "profile" };
     }
 
     const teamGroups = teamGroupsResult.data ?? [];
@@ -96,7 +99,7 @@ export async function getPhotoWallData(options: {
       ? zoneById.get(profileTeam.zone_id)?.team_group_id
       : null;
     if (!profileTeamGroupId) {
-      return { ...emptyData(), errorKind: "profile" };
+      return { ...emptyData(null, isTestMode), errorKind: "profile" };
     }
 
     const requestedTeamGroupId = Number(options.teamGroupId);
@@ -121,7 +124,7 @@ export async function getPhotoWallData(options: {
 
     if (!selectedTeamGroup || selectedTeamIds.length === 0) {
       return {
-        ...emptyData(),
+        ...emptyData(null, isTestMode),
         teamGroups,
         selectedTeamGroupId,
         page,
@@ -132,33 +135,44 @@ export async function getPhotoWallData(options: {
     const { data: reports, error: reportsError, count } = await admin
       .from("reports")
       .select(
-        "id, team_id, mission_id, photo_path, photo_is_valid, photo_visibility, photo_consent, status, created_at, story",
+        "id, user_id, team_id, mission_id, photo_path, photo_is_valid, photo_visibility, status, created_at, story",
         { count: "exact" },
       )
       .eq("status", "active")
       .eq("photo_is_valid", true)
       .eq("photo_visibility", "visible")
-      .eq("photo_consent", true)
+      .eq("is_prelaunch_test", isTestMode)
       .not("photo_path", "is", null)
       .in("team_id", selectedTeamIds)
       .order("created_at", { ascending: false })
       .range(0, requestedCount - 1);
     if (reportsError) throw reportsError;
 
-    const paths = (reports ?? [])
+    const reportRows = reports ?? [];
+    const paths = reportRows
       .map((report) => report.photo_path)
       .filter((path): path is string => typeof path === "string");
-    const { data: signedRows, error: signedError } = paths.length
-      ? await admin.storage
-          .from("mission-photos")
-          .createSignedUrls(paths, SIGNED_URL_SECONDS)
-      : { data: [], error: null };
-    if (signedError) throw signedError;
+    const reporterIds = [...new Set(reportRows.map((report) => report.user_id))];
+    const [signedResult, reportersResult] = await Promise.all([
+      paths.length
+        ? admin.storage
+            .from("mission-photos")
+            .createSignedUrls(paths, SIGNED_URL_SECONDS)
+        : Promise.resolve({ data: [], error: null }),
+      reporterIds.length
+        ? admin.from("profiles").select("id, name").in("id", reporterIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+    if (signedResult.error) throw signedResult.error;
+    if (reportersResult.error) throw reportersResult.error;
 
     const signedUrlByPath = new Map(
-      (signedRows ?? [])
+      (signedResult.data ?? [])
         .filter((row) => row.signedUrl && !row.error)
         .map((row) => [row.path, row.signedUrl] as const),
+    );
+    const reporterNameById = new Map(
+      (reportersResult.data ?? []).map((profile) => [profile.id, profile.name] as const),
     );
     const dateFormatter = new Intl.DateTimeFormat("zh-TW", {
       timeZone: "Asia/Taipei",
@@ -167,14 +181,13 @@ export async function getPhotoWallData(options: {
     });
 
     const items: PhotoWallItem[] = [];
-    for (const report of reports ?? []) {
+    for (const report of reportRows) {
       if (
         !isPhotoWallEligible({
           status: report.status,
           photoPath: report.photo_path,
           photoIsValid: report.photo_is_valid,
           photoVisibility: report.photo_visibility,
-          photoConsent: report.photo_consent,
         }) ||
         !report.photo_path
       ) continue;
@@ -190,6 +203,7 @@ export async function getPhotoWallData(options: {
         teamGroupName: selectedTeamGroup.name,
         zoneName: zone.name,
         teamName: team.name,
+        reporterName: reporterNameById.get(report.user_id) ?? "活動夥伴",
         missionName,
         dateLabel: dateFormatter.format(new Date(report.created_at)),
         story: normalizePhotoWallStory(report.story),
@@ -204,13 +218,15 @@ export async function getPhotoWallData(options: {
       hasMore: (count ?? 0) > requestedCount,
       error: null,
       errorKind: null,
+      isTestMode,
     };
   } catch (error) {
     unstable_rethrow(error);
     console.error("Unable to load private photo wall", error);
     return {
-      ...emptyData("目前無法載入照片牆，請稍後再試。"),
+      ...emptyData("目前無法載入照片牆，請稍後再試。", isTestMode),
       errorKind: "unknown",
+      isTestMode,
     };
   }
 }

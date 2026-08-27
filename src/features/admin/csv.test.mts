@@ -30,6 +30,7 @@ const row: AdminReportRow = {
   voidedAt: null,
   voidReason: null,
   signedUrl: "https://signed.example/private",
+  isTest: true,
 };
 
 test("CSV is BOM encoded, Taipei formatted, escaped, and privacy-safe", () => {
@@ -38,6 +39,7 @@ test("CSV is BOM encoded, Taipei formatted, escaped, and privacy-safe", () => {
   assert.match(csv, /2026-09-10T23:30:00/);
   assert.match(csv, /'\=HYPERLINK/);
   assert.match(csv, /有逗號, 也有""引號""/);
+  assert.match(csv, /"test"/);
   assert.doesNotMatch(csv, /private-report-id|private-team-id|private-photo|signed\.example/);
 });
 

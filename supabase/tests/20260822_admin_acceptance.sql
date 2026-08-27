@@ -41,8 +41,8 @@ reset role;
 
 do $$
 begin
-  if (select accepted_score from public.reports where friend_alias = 'admin-case-f') <> 0 then
-    raise exception 'Capped report did not start at zero';
+  if (select accepted_score from public.reports where friend_alias = 'admin-case-f') <> 6 then
+    raise exception 'Active report was not fully accepted';
   end if;
 end;
 $$;
@@ -61,10 +61,10 @@ declare
 begin
   select team_id into target_team from public.reports where friend_alias = 'admin-case-b';
   if (select accepted_score from public.reports where friend_alias = 'admin-case-f') <> 6 then
-    raise exception 'Later capped report was not reallocated after void';
+    raise exception 'Void changed a different active report score';
   end if;
-  if (select accepted_score from public.team_progress where team_id = target_team and activity_week = 1) > 30 then
-    raise exception 'Weekly cap exceeded after void';
+  if (select accepted_score from public.team_progress where team_id = target_team and activity_week = 1) <> 30 then
+    raise exception 'Unlimited weekly total did not reflect void';
   end if;
   if (select accepted_total from public.team_map_progress where team_id = target_team) <> 30 then
     raise exception 'Map progress did not reflect void recalculation';

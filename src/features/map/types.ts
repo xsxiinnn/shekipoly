@@ -18,4 +18,5 @@ export type MapData = {
   teamGroups: MapTeamGroup[];
   initialTeamGroupId: number | null;
   error: string | null;
+  isTestMode: boolean;
 };

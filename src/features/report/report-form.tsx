@@ -31,8 +31,6 @@ const fieldClassName =
   "h-12 w-full min-w-0 rounded-2xl border border-border bg-white px-4 text-base text-foreground outline-none transition focus:border-brand focus:ring-4 focus:ring-brand/10";
 
 export function ReportSuccessState({ result }: { result: ReportSuccess }) {
-  const cappedSteps = result.rawScore - result.acceptedScore;
-
   return (
     <section className="mt-7 overflow-hidden rounded-[28px] border border-[#cfe8dd] bg-white shadow-[0_12px_34px_rgba(29,39,36,0.08)]">
       <div className="bg-brand px-5 py-6 text-white">
@@ -42,6 +40,11 @@ export function ReportSuccessState({ result }: { result: ReportSuccess }) {
         <p className="mt-1 text-sm text-white/75">
           {result.is3x5 ? "3×5 禱告名單" : "一般關懷"}・活動 W{result.activityWeek}
         </p>
+        {result.isTest ? (
+          <p className="mt-2 rounded-xl bg-white/15 px-3 py-2 text-xs font-black">
+            🧪 已同步到預上線地圖與照片牆；8/31 正式活動將從 0 開始。
+          </p>
+        ) : null}
       </div>
 
       <div className="space-y-5 p-5">
@@ -63,24 +66,17 @@ export function ReportSuccessState({ result }: { result: ReportSuccess }) {
             <p className="mt-1 text-2xl font-black text-brand">{result.rawScore}步</p>
           </div>
           <div className="rounded-2xl bg-brand-soft px-4 py-4">
-            <p className="text-xs font-bold text-muted">本週實際計入</p>
+            <p className="text-xs font-bold text-muted">本次有效步數</p>
             <p className="mt-1 text-2xl font-black text-brand">
               {result.acceptedScore}步
             </p>
           </div>
         </div>
 
-        {cappedSteps > 0 ? (
-          <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-6 text-amber-800">
-            本次完成 {result.rawScore} 步，本週因達 30 步上限，實際計入{" "}
-            {result.acceptedScore} 步。完整行動仍已保存在回報中。
-          </p>
-        ) : null}
-
         <dl className="space-y-3 text-sm">
           <div className="flex items-center justify-between gap-4 border-b border-border pb-3">
             <dt className="text-muted">{result.teamName}本週</dt>
-            <dd className="font-black tabular-nums">{result.teamWeeklyScore} / 30步</dd>
+            <dd className="font-black tabular-nums">{result.teamWeeklyScore}步</dd>
           </div>
           <div className="flex items-center justify-between gap-4 border-b border-border pb-3">
             <dt className="text-muted">累積有效步數</dt>
@@ -174,7 +170,7 @@ export function ReportForm({
       setPhotoError(
         error instanceof Error
           ? error.message
-          : "這張照片目前無法處理，請換一張照片或先將照片轉成 JPG 後再試一次。",
+          : "這張照片目前無法處理，請換一張照片再試一次。",
       );
     } finally {
       setIsProcessingPhoto(false);

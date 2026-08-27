@@ -8,11 +8,15 @@ const visiblePhoto = {
   photoPath: "user/photo.webp",
   photoIsValid: true,
   photoVisibility: "visible",
-  photoConsent: true,
 };
 
-test("visible active consented photo is eligible", () => {
+test("visible active verified photo is eligible", () => {
   assert.equal(isPhotoWallEligible(visiblePhoto), true);
+});
+
+test("legacy consent value no longer hides an otherwise eligible photo", () => {
+  const legacyPhoto = { ...visiblePhoto, photoConsent: false };
+  assert.equal(isPhotoWallEligible(legacyPhoto), true);
 });
 
 test("hidden photo is excluded", () => {
@@ -21,10 +25,6 @@ test("hidden photo is excluded", () => {
 
 test("void report photo is excluded", () => {
   assert.equal(isPhotoWallEligible({ ...visiblePhoto, status: "void" }), false);
-});
-
-test("photo without consent is excluded", () => {
-  assert.equal(isPhotoWallEligible({ ...visiblePhoto, photoConsent: false }), false);
 });
 
 test("photo wall story keeps plain text and line breaks", () => {

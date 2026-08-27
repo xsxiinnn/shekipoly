@@ -67,7 +67,12 @@ function parseReportRow(value: unknown): AdminReportRow | null {
     status,
     voidedAt: typeof row.voided_at === "string" ? row.voided_at : null,
     voidReason: typeof row.void_reason === "string" ? row.void_reason : null,
+    isTest: row.is_prelaunch_test === true,
   };
+}
+
+function scopeValue(scope: AdminReportFilters["dataScope"]) {
+  return scope === "all" ? null : scope === "test";
 }
 
 function reportRpcArgs(filters: AdminReportFilters, limit: number, offset: number) {
@@ -84,6 +89,7 @@ function reportRpcArgs(filters: AdminReportFilters, limit: number, offset: numbe
     p_search: filters.search,
     p_limit: limit,
     p_offset: offset,
+    p_is_test: scopeValue(filters.dataScope),
   };
 }
 
@@ -119,6 +125,7 @@ export async function getAdminDashboardData(options: {
   teamGroupId: number | null;
   zoneId: number | null;
   teamId: string | null;
+  dataScope: AdminReportFilters["dataScope"];
 }): Promise<AdminDashboardData> {
   try {
     await requireAdminIdentity();
@@ -126,12 +133,14 @@ export async function getAdminDashboardData(options: {
     const [summaryResult, progressResult, references] = await Promise.all([
       supabase.rpc("admin_dashboard_summary", {
         p_activity_week: options.activityWeek,
+        p_is_test: scopeValue(options.dataScope),
       }),
       supabase.rpc("admin_team_progress_rows", {
         p_activity_week: options.activityWeek,
         p_team_group_id: options.teamGroupId,
         p_zone_id: options.zoneId,
         p_team_id: options.teamId,
+        p_is_test: scopeValue(options.dataScope),
       }),
       getAdminReferenceData(),
     ]);
@@ -151,7 +160,6 @@ export async function getAdminDashboardData(options: {
         photoCount: numberValue(kpis.photo_count),
         rawSteps: numberValue(kpis.raw_steps),
         acceptedSteps: numberValue(kpis.accepted_steps),
-        cappedTeamCount: numberValue(kpis.capped_team_count),
         participatingTeamCount: numberValue(kpis.participating_team_count),
       },
       teamGroups: groups.map((value) => {
@@ -199,7 +207,6 @@ export async function getAdminDashboardData(options: {
         photoCount: 0,
         rawSteps: 0,
         acceptedSteps: 0,
-        cappedTeamCount: 0,
         participatingTeamCount: 0,
       },
       teamGroups: [],

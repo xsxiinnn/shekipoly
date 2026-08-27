@@ -13,7 +13,6 @@ const KPI_LABELS = [
   ["photoCount", "有照片回報數"],
   ["rawSteps", "Raw Steps"],
   ["acceptedSteps", "Accepted Steps"],
-  ["cappedTeamCount", "本週達 30 步小組"],
   ["participatingTeamCount", "有參與小組"],
 ] as const;
 
@@ -24,13 +23,17 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
     teamGroupId: filters.teamGroupId,
     zoneId: filters.zoneId,
     teamId: filters.teamId,
+    dataScope: filters.dataScope,
   });
   return (
     <div className="space-y-8">
       <header>
         <p className="text-sm font-bold text-brand">活動資料中心</p>
         <h1 className="mt-1 text-3xl font-black">儀表板</h1>
-        <p className="mt-2 text-sm text-muted">{filters.activityWeek ? `目前顯示 W${filters.activityWeek}` : "目前顯示全活動"}</p>
+        <p className="mt-2 text-sm text-muted">
+          {filters.dataScope === "official" ? "正式資料" : filters.dataScope === "test" ? "測試資料" : "全部資料"}
+          {filters.activityWeek ? `・W${filters.activityWeek}` : "・全活動"}
+        </p>
       </header>
       <AdminFilters references={data.references} filters={filters} />
       {data.error ? <p className="rounded-2xl bg-red-50 p-4 font-bold text-red-700">{data.error}</p> : null}
@@ -72,7 +75,7 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
               {data.progress.map((row) => (
                 <tr key={row.teamId} className="border-t border-border">
                   <td className="px-3 py-3 font-bold">{row.teamGroupName}</td><td className="px-3 py-3">{row.zoneName}</td><td className="px-3 py-3 font-black">{row.teamName}</td>
-                  {row.weeks.map((score, index) => <td key={index} className={`px-3 py-3 tabular-nums ${filters.activityWeek === index + 1 ? "bg-brand-soft font-black text-brand" : ""}`}>{Math.min(score, 30)} / 30</td>)}
+                  {row.weeks.map((score, index) => <td key={index} className={`px-3 py-3 tabular-nums ${filters.activityWeek === index + 1 ? "bg-brand-soft font-black text-brand" : ""}`}>{score}</td>)}
                   <td className="px-3 py-3 font-bold">{row.rawTotal}</td><td className="px-3 py-3 font-bold">{row.acceptedTotal}</td><td className="px-3 py-3 font-black text-brand">第 {row.currentSquare} 格</td><td className="px-3 py-3">{row.remainder}</td>
                 </tr>
               ))}

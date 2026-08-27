@@ -35,8 +35,11 @@ export function parseAdminReportFilters(
   const statusValue = first(params.status);
   const visibilityValue = first(params.visibility);
   const searchValue = first(params.search)?.trim();
+  const scopeValue = first(params.scope);
 
   return {
+    dataScope:
+      scopeValue === "test" || scopeValue === "all" ? scopeValue : "official",
     activityWeek: integerInRange(params.week, 1, 6),
     teamGroupId: positiveInteger(params.group),
     zoneId: positiveInteger(params.zone),
@@ -62,6 +65,7 @@ export function filtersToSearchParams(
   additions: Record<string, string | number | null> = {},
 ) {
   const params = new URLSearchParams();
+  if (filters.dataScope !== "official") params.set("scope", filters.dataScope);
   if (filters.activityWeek) params.set("week", String(filters.activityWeek));
   if (filters.teamGroupId) params.set("group", String(filters.teamGroupId));
   if (filters.zoneId) params.set("zone", String(filters.zoneId));

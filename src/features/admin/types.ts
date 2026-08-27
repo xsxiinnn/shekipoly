@@ -20,7 +20,6 @@ export type AdminKpis = {
   photoCount: number;
   rawSteps: number;
   acceptedSteps: number;
-  cappedTeamCount: number;
   participatingTeamCount: number;
 };
 
@@ -58,6 +57,7 @@ export type AdminDashboardData = {
 };
 
 export type AdminReportFilters = {
+  dataScope: "official" | "test" | "all";
   activityWeek: number | null;
   teamGroupId: number | null;
   zoneId: number | null;
@@ -96,6 +96,7 @@ export type AdminReportRow = {
   voidedAt: string | null;
   voidReason: string | null;
   signedUrl?: string | null;
+  isTest: boolean;
 };
 
 export type AdminReportsPageData = {

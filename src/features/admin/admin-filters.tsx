@@ -33,6 +33,14 @@ export function AdminFilters({
   return (
     <form method="get" className="grid gap-3 rounded-2xl border border-border bg-white p-4 sm:grid-cols-2 xl:grid-cols-4">
       <label className="text-xs font-bold text-muted">
+        資料類型
+        <select name="scope" defaultValue={filters.dataScope} className="mt-1.5 h-10 w-full rounded-xl border border-border bg-white px-3 text-sm text-foreground">
+          <option value="official">正式</option>
+          <option value="test">預上線測試</option>
+          <option value="all">全部</option>
+        </select>
+      </label>
+      <label className="text-xs font-bold text-muted">
         活動週次
         <select name="week" defaultValue={filters.activityWeek ?? ""} className="mt-1.5 h-10 w-full rounded-xl border border-border bg-white px-3 text-sm text-foreground">
           <option value="">全活動</option>

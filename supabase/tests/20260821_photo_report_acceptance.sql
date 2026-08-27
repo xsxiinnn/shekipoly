@@ -12,7 +12,7 @@ from (
   values
     ('20000000-0000-0000-0000-000000000001'::uuid, 'Photo owner A', '舒畬小組'),
     ('20000000-0000-0000-0000-000000000002'::uuid, 'Photo owner B', '舒畬小組'),
-    ('20000000-0000-0000-0000-000000000003'::uuid, 'Weekly cap', '信博小組')
+    ('20000000-0000-0000-0000-000000000003'::uuid, 'Unlimited weekly score', '信博小組')
 ) as test_user(id, name, team_name)
 join public.teams on teams.name = test_user.team_name;
 
@@ -91,8 +91,8 @@ begin
     'photo-case-a:1:0:1:1',
     'photo-case-b:1:3:4:4',
     'photo-case-c:6:3:9:9',
-    'photo-case-d:6:3:9:3',
-    'photo-case-e:6:3:9:0'
+    'photo-case-d:6:3:9:9',
+    'photo-case-e:6:3:9:9'
   ] then
     raise exception 'Photo scoring cases A-E mismatch: %', scores;
   end if;
@@ -185,13 +185,13 @@ begin
   if not exists (
     select 1 from public.reports
     where friend_alias = 'photo-case-e'
-      and accepted_score = 0
+      and accepted_score = 9
       and status = 'active'
       and photo_is_valid
       and photo_visibility = 'visible'
       and photo_path is not null
   ) then
-    raise exception 'Cap-zero photo was incorrectly hidden from photo wall';
+    raise exception 'Fully accepted photo was incorrectly hidden from photo wall';
   end if;
 
   if (select public from storage.buckets where id = 'mission-photos') then

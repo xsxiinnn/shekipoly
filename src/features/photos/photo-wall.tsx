@@ -73,6 +73,9 @@ export function PhotoWall({ data }: { data: PhotoWallData }) {
                 <span className="mt-1 block break-words text-xs font-bold leading-5 text-brand">
                   {photo.missionName}
                 </span>
+                <span className="mt-1 block break-words text-xs font-semibold leading-5 text-foreground">
+                  回報者：{photo.reporterName}
+                </span>
                 <span className="mt-1 block text-xs font-semibold text-muted">
                   {photo.dateLabel}
                 </span>
@@ -140,6 +143,9 @@ export function PhotoWall({ data }: { data: PhotoWallData }) {
                   {selectedPhoto.teamName}｜{selectedPhoto.zoneName}
                 </p>
                 <p className="font-bold text-brand">{selectedPhoto.missionName}</p>
+                <p className="font-semibold text-foreground">
+                  回報者：{selectedPhoto.reporterName}
+                </p>
                 <p className="font-semibold text-muted">{selectedPhoto.dateLabel}</p>
                 {selectedPhoto.story ? (
                   <section className="mt-5 border-t border-border pt-5" aria-labelledby="photo-story-title">

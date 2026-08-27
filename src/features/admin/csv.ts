@@ -28,6 +28,7 @@ export function createReportsCsv(rows: AdminReportRow[]) {
   const headers = [
     "created_at_taipei",
     "activity_week",
+    "data_type",
     "reporter_name",
     "team_group",
     "zone",
@@ -48,6 +49,7 @@ export function createReportsCsv(rows: AdminReportRow[]) {
     [
       formatTaipeiTimestamp(row.createdAt),
       row.activityWeek,
+      row.isTest ? "test" : "official",
       row.reporterName,
       row.teamGroupName,
       row.zoneName,
