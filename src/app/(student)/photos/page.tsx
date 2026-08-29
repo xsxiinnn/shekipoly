@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { getTeamThemeStyle, resolveTeamTheme } from "@/config/team-themes";
 import { getPhotoWallData } from "@/features/photos/data";
 import { PhotoWall } from "@/features/photos/photo-wall";
 
@@ -21,14 +22,23 @@ export default async function PhotosPage({
 
   if (data.errorKind === "session") redirect("/onboarding");
 
+  const selectedTeamGroupName = data.teamGroups.find(
+    (teamGroup) => teamGroup.id === data.selectedTeamGroupId,
+  )?.name;
+  const selectedTheme = resolveTeamTheme(selectedTeamGroupName);
+
   return (
-    <div className="min-w-0 overflow-x-clip pb-4 pt-2">
-      <header>
-        <p className="text-xs font-bold tracking-[0.18em] text-brand">
+    <div
+      data-team-theme={selectedTheme.slug}
+      style={getTeamThemeStyle(selectedTeamGroupName)}
+      className="min-w-0 overflow-x-clip pb-4 pt-2"
+    >
+      <header className="text-team-on-primary">
+        <p className="text-xs font-bold tracking-[0.18em]">
           青年關懷大富翁
         </p>
         <h1 className="mt-1 text-2xl font-black tracking-tight">四團隊照片牆</h1>
-        <p className="mt-2 text-sm leading-6 text-muted">
+        <p className="mt-2 text-sm leading-6 text-team-on-primary/75">
           一起看看活動中留下的關懷足跡。
         </p>
       </header>

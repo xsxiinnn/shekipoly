@@ -3,11 +3,19 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { getTeamThemeStyle, resolveTeamTheme } from "@/config/team-themes";
+import { useStudentShellTheme } from "@/features/theme/use-student-shell-theme";
+
 import type { PhotoWallData, PhotoWallItem } from "./types";
 
 export function PhotoWall({ data }: { data: PhotoWallData }) {
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoWallItem | null>(null);
   const photoTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const selectedTeamGroup = data.teamGroups.find(
+    (teamGroup) => teamGroup.id === data.selectedTeamGroupId,
+  );
+  const selectedTheme = resolveTeamTheme(selectedTeamGroup?.name);
+  useStudentShellTheme(selectedTeamGroup?.name);
 
   useEffect(() => {
     if (!selectedPhoto) return;
@@ -24,7 +32,11 @@ export function PhotoWall({ data }: { data: PhotoWallData }) {
   }, [selectedPhoto]);
 
   return (
-    <>
+    <div
+      data-team-theme={selectedTheme.slug}
+      style={getTeamThemeStyle(selectedTeamGroup?.name)}
+      className="min-w-0"
+    >
       <nav aria-label="團隊照片牆" className="mt-5 grid grid-cols-2 gap-2">
         {data.teamGroups.map((teamGroup) => {
           const active = teamGroup.id === data.selectedTeamGroupId;
@@ -35,7 +47,7 @@ export function PhotoWall({ data }: { data: PhotoWallData }) {
               aria-current={active ? "page" : undefined}
               className={`flex min-h-11 min-w-0 items-center justify-center rounded-2xl px-2 text-center text-sm font-black leading-5 ${
                 active
-                  ? "bg-brand text-white shadow-sm"
+                  ? "border border-team-control-border bg-team-control text-team-control-text shadow-sm ring-2 ring-team-control-border"
                   : "border border-border bg-white text-muted"
               }`}
             >
@@ -92,7 +104,7 @@ export function PhotoWall({ data }: { data: PhotoWallData }) {
           </p>
           <Link
             href="/report"
-            className="mt-5 flex h-11 items-center justify-center rounded-2xl bg-brand text-sm font-black text-white"
+            className="mt-5 flex h-11 items-center justify-center rounded-2xl border border-team-control-border bg-team-control text-sm font-black text-team-control-text"
           >
             去回報
           </Link>
@@ -162,6 +174,6 @@ export function PhotoWall({ data }: { data: PhotoWallData }) {
           </div>
         </div>
       ) : null}
-    </>
+    </div>
   );
 }

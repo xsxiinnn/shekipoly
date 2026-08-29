@@ -23,12 +23,12 @@ export default async function ReportPage() {
 
   return (
     <div className="min-w-0 overflow-x-clip pb-4 pt-2">
-      <header>
-        <p className="text-xs font-bold tracking-[0.18em] text-brand">
+      <header className="text-team-on-primary">
+        <p className="text-xs font-bold tracking-[0.18em]">
           青年關懷大富翁
         </p>
         <h1 className="mt-1 text-2xl font-black tracking-tight">探訪回報</h1>
-        <p className="mt-2 text-sm leading-6 text-muted">
+        <p className="mt-2 text-sm leading-6 text-team-on-primary/75">
           每一次關心都很重要，完成後由系統計算小組步數。
         </p>
       </header>
@@ -36,20 +36,20 @@ export default async function ReportPage() {
       <ActivityStatusBanner status={activityStatus} />
 
       {data.profile ? (
-        <section className="mt-5 rounded-3xl bg-brand p-5 text-white shadow-[0_10px_28px_rgba(23,124,101,0.2)]">
+        <section className="mt-5 rounded-3xl border border-team-control-border bg-team-control p-5 text-team-control-text shadow-[0_10px_28px_rgba(29,39,36,0.16)]">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-xs font-bold text-white/70">回報人</p>
+              <p className="text-xs font-bold text-team-control-text/70">回報人</p>
               <h2 className="mt-1 truncate text-2xl font-black">{data.profile.name}</h2>
             </div>
             <Link
               href="/onboarding?edit=1"
-              className="shrink-0 rounded-full bg-white/15 px-3 py-2 text-xs font-bold text-white backdrop-blur"
+              className="shrink-0 rounded-full border border-team-control-border bg-white/70 px-3 py-2 text-xs font-bold text-team-control-text backdrop-blur"
             >
               修改資料
             </Link>
           </div>
-          <p className="mt-4 break-words rounded-2xl bg-white/10 px-3.5 py-3 text-sm font-black leading-6">
+          <p className="mt-4 break-words rounded-2xl bg-white/65 px-3.5 py-3 text-sm font-black leading-6">
             {data.profile.teamGroupName}｜{data.profile.zoneName}｜{data.profile.teamName}
           </p>
         </section>

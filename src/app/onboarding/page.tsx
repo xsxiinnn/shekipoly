@@ -10,6 +10,10 @@ export const metadata: Metadata = {
 export default async function OnboardingPage() {
   const data = await getOnboardingData();
 
+  if (!data.error && data.teamGroups.length > 0) {
+    return <OnboardingForm {...data} />;
+  }
+
   return (
     <main className="mx-auto min-h-dvh w-full max-w-md overflow-x-clip bg-background px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))] shadow-[0_0_40px_rgba(29,39,36,0.08)]">
       <header>
@@ -40,15 +44,13 @@ export default async function OnboardingPage() {
             重新整理
           </a>
         </section>
-      ) : data.teamGroups.length === 0 ? (
+      ) : (
         <section className="mt-8 rounded-3xl border border-dashed border-border bg-white/60 px-5 py-10 text-center">
           <p className="text-sm font-black">尚未設定團隊</p>
           <p className="mt-2 text-sm leading-6 text-muted">
             請聯絡管理員完成基本資料設定後再回來。
           </p>
         </section>
-      ) : (
-        <OnboardingForm {...data} />
       )}
     </main>
   );

@@ -32,10 +32,10 @@ export default async function RulesPage() {
 
   return (
     <div className="min-w-0 overflow-x-clip pb-4 pt-2">
-      <header>
-        <p className="text-xs font-bold tracking-[0.18em] text-brand">青年關懷大富翁</p>
+      <header className="text-team-on-primary">
+        <p className="text-xs font-bold tracking-[0.18em]">青年關懷大富翁</p>
         <h1 className="mt-1 text-3xl font-black tracking-tight">遊戲規則</h1>
-        <p className="mt-2 text-base font-bold text-muted">一起走進他的世界</p>
+        <p className="mt-2 text-base font-bold text-team-on-primary/75">一起走進他的世界</p>
       </header>
 
       {activityScope.isTestMode ? (
@@ -49,7 +49,7 @@ export default async function RulesPage() {
         <ol className="mt-4 grid gap-3">
           {HOW_TO_PLAY.map((step, index) => (
             <li key={step} className="flex items-center gap-3 rounded-2xl border border-border bg-white p-4 shadow-sm">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-brand text-sm font-black text-white">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-team-control-border bg-team-control text-sm font-black text-team-control-text">
                 {index + 1}
               </span>
               <span className="text-sm font-black leading-6">{step}</span>

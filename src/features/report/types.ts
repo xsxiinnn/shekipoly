@@ -1,8 +1,11 @@
+import type { TeamThemeSlug } from "@/config/team-themes";
+
 export type ReportMission = {
   id: number;
   name: string;
   description: string;
   baseScore: number;
+  sortOrder: number;
 };
 
 export type ReportProfile = {
@@ -10,6 +13,7 @@ export type ReportProfile = {
   teamGroupName: string;
   zoneName: string;
   teamName: string;
+  teamThemeSlug: TeamThemeSlug | null;
 };
 
 export type ReportPageData = {

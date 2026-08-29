@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test src/features/activity/activity-status.test.mts src/features/activity/prelaunch-test-mode.test.mts src/features/report/development-week.test.mts src/features/report/photo.test.mts src/features/report/photo-signature.test.mts src/features/report/submission-payload.test.mts src/features/photos/visibility.test.mts src/features/admin/filters.test.mts src/features/admin/csv.test.mts src/lib/supabase/profile-gate.test.mts",
+    "test": "node --experimental-strip-types --test src/config/team-themes.test.mts src/features/activity/activity-status.test.mts src/features/activity/prelaunch-test-mode.test.mts src/features/report/development-week.test.mts src/features/report/photo.test.mts src/features/report/photo-signature.test.mts src/features/report/submission-payload.test.mts src/features/photos/visibility.test.mts src/features/admin/filters.test.mts src/features/admin/csv.test.mts src/lib/supabase/profile-gate.test.mts",
     "cleanup:prelaunch": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/cleanup-prelaunch-data.ts"
   },
   "dependencies": {

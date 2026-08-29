@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 
+import { getTeamThemeStyle, resolveTeamTheme } from "@/config/team-themes";
 import { createClient } from "@/lib/supabase/client";
 
 import { saveProfile } from "./actions";
@@ -99,8 +100,36 @@ export function OnboardingForm({
     selectedZoneId !== "" &&
     selectedTeamId !== "";
 
+  const selectedTeamGroup = teamGroups.find(
+    (teamGroup) => String(teamGroup.id) === selectedTeamGroupId,
+  );
+  const selectedTheme = resolveTeamTheme(selectedTeamGroup?.name);
+
   return (
-    <form action={formAction} className="mt-7 space-y-5">
+    <main
+      data-team-theme={selectedTheme.slug}
+      style={getTeamThemeStyle(selectedTeamGroup?.name)}
+      className="mx-auto min-h-dvh w-full max-w-md overflow-x-clip bg-team-page px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))] text-team-on-primary shadow-[0_0_40px_rgba(29,39,36,0.08)] transition-colors duration-300"
+    >
+      <header>
+        <div className="flex size-12 items-center justify-center rounded-2xl bg-team-on-primary/15 text-xl font-black shadow-[0_8px_20px_rgba(29,39,36,0.14)]">
+          走
+        </div>
+        <p className="mt-6 text-xs font-bold tracking-[0.18em]">青年關懷大富翁</p>
+        <h1 className="mt-1 text-3xl font-black tracking-tight">
+          {profile ? "修改我的資料" : "先認識你一下"}
+        </h1>
+        <p className="mt-3 max-w-sm text-sm leading-6 text-team-on-primary/75">
+          {profile
+            ? "選擇不同團隊時，主視覺會立即跟著切換。"
+            : "完成基本資料後，就可以開始參與任務與查看小組進度。"}
+        </p>
+      </header>
+
+      <form
+        action={formAction}
+        className="mt-7 space-y-5 rounded-[28px] bg-surface p-5 text-team-text-primary shadow-[0_12px_32px_rgba(29,39,36,0.15)]"
+      >
       <div>
         <label htmlFor="name" className="mb-2 block text-sm font-bold">
           姓名
@@ -246,7 +275,7 @@ export function OnboardingForm({
           type="submit"
           disabled={!isFormReady || isPending}
           whileTap={isFormReady ? { scale: 0.98 } : undefined}
-          className="flex h-13 w-full items-center justify-center rounded-2xl bg-brand px-5 text-base font-black text-white shadow-[0_8px_20px_rgba(23,124,101,0.22)] disabled:cursor-not-allowed disabled:bg-[#aab7b1] disabled:shadow-none"
+          className="flex h-13 w-full items-center justify-center rounded-2xl border-2 border-team-control-border bg-team-control px-5 text-base font-black text-team-control-text shadow-[0_8px_20px_rgba(29,39,36,0.16)] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
         >
           {isPending ? "儲存中…" : profile ? "儲存修改" : "完成設定"}
         </motion.button>
@@ -259,6 +288,7 @@ export function OnboardingForm({
           </Link>
         ) : null}
       </div>
-    </form>
+      </form>
+    </main>
   );
 }

@@ -2,6 +2,7 @@ import "server-only";
 
 import { unstable_rethrow } from "next/navigation";
 
+import { getTeamTheme } from "@/config/team-themes";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
@@ -87,7 +88,17 @@ export async function getReportPageData(): Promise<ReportPageData> {
       name: mission.name,
       description: mission.description,
       baseScore: mission.base_score,
+      // The current schema defines the formal mission order directly as the
+      // constrained primary key (1 through 6); there is no sort_order column.
+      sortOrder: mission.id,
     }));
+
+    const teamTheme = getTeamTheme(teamGroup.name);
+    if (!teamTheme) {
+      console.warn("Unknown team group theme; report will use text mission cards.", {
+        teamGroupName: teamGroup.name,
+      });
+    }
 
     return {
       profile: {
@@ -95,6 +106,7 @@ export async function getReportPageData(): Promise<ReportPageData> {
         teamGroupName: teamGroup.name,
         zoneName: zone.name,
         teamName: team.name,
+        teamThemeSlug: teamTheme?.slug ?? null,
       },
       missions,
       error:

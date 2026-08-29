@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import {
   startTransition,
   useActionState,
@@ -11,6 +12,7 @@ import {
 } from "react";
 
 import { createClient } from "@/lib/supabase/client";
+import { getMissionImage } from "@/config/team-themes";
 
 import { submitReport } from "./actions";
 import { hasHeicFileHint, preparePhoto, type PreparedPhoto } from "./photo";
@@ -33,15 +35,15 @@ const fieldClassName =
 export function ReportSuccessState({ result }: { result: ReportSuccess }) {
   return (
     <section className="mt-7 overflow-hidden rounded-[28px] border border-[#cfe8dd] bg-white shadow-[0_12px_34px_rgba(29,39,36,0.08)]">
-      <div className="bg-brand px-5 py-6 text-white">
+      <div className="border-b border-team-control-border bg-team-control px-5 py-6 text-team-control-text">
         <p className="text-3xl" aria-hidden="true">🎉</p>
         <h2 className="mt-2 text-2xl font-black">回報成功！</h2>
         <p className="mt-2 text-base font-bold">{result.missionName}</p>
-        <p className="mt-1 text-sm text-white/75">
+        <p className="mt-1 text-sm text-team-control-text/75">
           {result.is3x5 ? "3×5 禱告名單" : "一般關懷"}・活動 W{result.activityWeek}
         </p>
         {result.isTest ? (
-          <p className="mt-2 rounded-xl bg-white/15 px-3 py-2 text-xs font-black">
+          <p className="mt-2 rounded-xl bg-white/70 px-3 py-2 text-xs font-black">
             🧪 已同步到預上線地圖與照片牆；8/31 正式活動將從 0 開始。
           </p>
         ) : null}
@@ -99,7 +101,7 @@ export function ReportSuccessState({ result }: { result: ReportSuccess }) {
         <div className="space-y-2 pt-1">
           <a
             href="/report"
-            className="flex h-12 items-center justify-center rounded-2xl bg-brand text-base font-black text-white"
+            className="flex h-12 items-center justify-center rounded-2xl border-2 border-team-control-border bg-team-control text-base font-black text-team-control-text"
           >
             再回報一位
           </a>
@@ -139,6 +141,9 @@ export function ReportForm({
   const [isProcessingIphonePhoto, setIsProcessingIphonePhoto] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [failedMissionImages, setFailedMissionImages] = useState<Set<number>>(
+    () => new Set(),
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const submittingRef = useRef(false);
   const [state, formAction, isPending] = useActionState(submitReport, initialState);
@@ -284,8 +289,14 @@ export function ReportForm({
         ) : null}
       </section>
 
-      <fieldset className="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-        <legend className="px-1 text-base font-black">是 3×5 認領禱告名單嗎？</legend>
+      <section
+        role="radiogroup"
+        aria-labelledby="is-3x5-title"
+        className="rounded-3xl border border-border bg-surface p-5 shadow-sm"
+      >
+        <h2 id="is-3x5-title" className="text-base font-black leading-6">
+          是 3×5 認領禱告名單嗎？
+        </h2>
         <div className="mt-3 grid gap-3">
           {[
             {
@@ -332,47 +343,88 @@ export function ReportForm({
         {state.fieldErrors?.is3x5 ? (
           <p className="mt-2 text-sm font-bold text-red-600">{state.fieldErrors.is3x5}</p>
         ) : null}
-      </fieldset>
+      </section>
 
-      <fieldset className="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-        <legend className="px-1 text-base font-black">選擇本次完成的任務</legend>
+      <section
+        role="radiogroup"
+        aria-labelledby="mission-title"
+        className="rounded-3xl border border-border bg-surface p-4 shadow-sm min-[360px]:p-5"
+      >
+        <h2 id="mission-title" className="text-base font-black leading-6">
+          這次完成哪一個任務？
+        </h2>
         <p className="mt-2 rounded-2xl bg-brand-soft px-3.5 py-3 text-xs font-bold leading-5 text-brand">
-          如果同一次關懷完成多個任務，請選擇步數最高的一項回報。
+          同一次關懷完成多個任務時，請選擇步數最高的一項。
         </p>
-        <div className="mt-4 grid gap-3">
+        <div className="mt-4 grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:grid-cols-3">
           {missions.map((mission) => {
             const selected = selectedMissionId === mission.id;
+            const missionImage = getMissionImage(
+              profile.teamThemeSlug,
+              mission.sortOrder,
+            );
+            const imageFailed = failedMissionImages.has(mission.id);
             return (
               <label
                 key={mission.id}
-                className={`cursor-pointer rounded-2xl border p-4 transition ${
+                className={`group relative min-w-0 cursor-pointer overflow-hidden rounded-2xl border bg-white p-2 transition duration-150 focus-within:outline-none focus-within:ring-4 focus-within:ring-team-selected-ring/30 ${
                   selected
-                    ? "border-brand bg-brand-soft ring-2 ring-brand/10"
-                    : "border-border bg-white"
+                    ? "scale-[1.015] border-team-selected-ring ring-[3px] ring-team-selected-ring"
+                    : "border-border hover:border-brand"
                 }`}
               >
-                <span className="flex items-start gap-3">
-                  <input
-                    type="radio"
-                    name="mission_id"
-                    value={mission.id}
-                    required
-                    disabled={isBusy}
-                    checked={selected}
-                    onChange={() => setSelectedMissionId(mission.id)}
-                    className="mt-0.5 size-5 shrink-0 accent-brand"
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-start justify-between gap-3">
-                      <span className="text-sm font-black leading-5">{mission.name}</span>
-                      <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-black text-brand shadow-sm">
-                        {mission.baseScore}步
+                <input
+                  type="radio"
+                  name="mission_id"
+                  value={mission.id}
+                  required
+                  disabled={isBusy}
+                  checked={selected}
+                  onChange={() => setSelectedMissionId(mission.id)}
+                  className="sr-only"
+                  aria-label={`${mission.name}，基本 ${mission.baseScore} 步`}
+                />
+                {selected ? (
+                  <span
+                    aria-hidden="true"
+                    className="absolute right-2 top-2 z-10 flex size-7 items-center justify-center rounded-full border border-team-control-border bg-team-control text-sm font-black text-team-control-text shadow-md"
+                  >
+                    ✓
+                  </span>
+                ) : null}
+                <span className="relative block aspect-[1240/1748] w-full overflow-hidden rounded-xl bg-brand-soft">
+                  {missionImage && !imageFailed ? (
+                    <>
+                      <span
+                        aria-hidden="true"
+                        className="absolute inset-0 animate-pulse bg-brand-soft"
+                      />
+                      <Image
+                        src={missionImage}
+                        alt={`${mission.name}任務圖卡`}
+                        fill
+                        loading="lazy"
+                        sizes="(max-width: 359px) calc(100vw - 72px), (max-width: 639px) calc((100vw - 76px) / 2), 130px"
+                        className="relative z-[1] object-contain"
+                        onError={() =>
+                          setFailedMissionImages((current) => {
+                            const next = new Set(current);
+                            next.add(mission.id);
+                            return next;
+                          })
+                        }
+                      />
+                    </>
+                  ) : (
+                    <span className="flex h-full flex-col items-center justify-center px-3 text-center">
+                      <span className="text-sm font-black leading-6 text-brand">
+                        {mission.name}
+                      </span>
+                      <span className="mt-2 text-xs font-semibold leading-5 text-muted">
+                        {mission.description}
                       </span>
                     </span>
-                    <span className="mt-1.5 block text-xs font-medium leading-5 text-muted">
-                      {mission.description}
-                    </span>
-                  </span>
+                  )}
                 </span>
               </label>
             );
@@ -383,7 +435,7 @@ export function ReportForm({
             {state.fieldErrors.missionId}
           </p>
         ) : null}
-      </fieldset>
+      </section>
 
       <section className="overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm">
         <h2 className="text-base font-black">📸 留下這次的足跡</h2>
@@ -519,16 +571,16 @@ export function ReportForm({
       <button
         type="submit"
         disabled={isBusy}
-        className="flex h-13 w-full items-center justify-center rounded-2xl bg-brand px-5 text-base font-black text-white shadow-[0_8px_20px_rgba(23,124,101,0.22)] disabled:cursor-not-allowed disabled:bg-[#8ba59d] disabled:shadow-none"
+        className="flex h-13 w-full items-center justify-center rounded-2xl border-2 border-team-control-border bg-team-control px-5 text-base font-black text-team-control-text shadow-[0_8px_20px_rgba(29,39,36,0.16)] disabled:cursor-not-allowed disabled:opacity-55 disabled:shadow-none"
       >
         {isUploadingPhoto ? (
           <span className="flex items-center gap-2">
-            <span className="size-4 animate-spin rounded-full border-2 border-white/35 border-t-white" />
+            <span className="size-4 animate-spin rounded-full border-2 border-team-control-text/30 border-t-team-control-text" />
             正在上傳照片…
           </span>
         ) : isPending ? (
           <span className="flex items-center gap-2">
-            <span className="size-4 animate-spin rounded-full border-2 border-white/35 border-t-white" />
+            <span className="size-4 animate-spin rounded-full border-2 border-team-control-text/30 border-t-team-control-text" />
             回報送出中…
           </span>
         ) : (

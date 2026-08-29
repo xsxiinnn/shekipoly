@@ -3,6 +3,9 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 
+import { getTeamThemeStyle, resolveTeamTheme } from "@/config/team-themes";
+import { useStudentShellTheme } from "@/features/theme/use-student-shell-theme";
+
 import type { MapData, MapTeam, MapTeamGroup } from "./types";
 
 const BOARD_SQUARES = [
@@ -240,6 +243,8 @@ export function MapExperience({ teamGroups, initialTeamGroupId, error }: MapData
   const selectedTeamGroup =
     teamGroups.find((teamGroup) => teamGroup.id === selectedTeamGroupId) ??
     teamGroups[0];
+  const selectedTheme = resolveTeamTheme(selectedTeamGroup?.name);
+  useStudentShellTheme(selectedTeamGroup?.name);
 
   const teamsBySquare = useMemo(() => {
     const groupedTeams = new Map<number, MapTeam[]>();
@@ -273,15 +278,19 @@ export function MapExperience({ teamGroups, initialTeamGroupId, error }: MapData
     selectedSquare === null ? [] : (teamsBySquare.get(selectedSquare) ?? []);
 
   return (
-    <div className="min-w-0 overflow-x-clip pb-4">
-      <header className="pb-4 pt-2">
-        <p className="text-xs font-bold tracking-[0.18em] text-brand">青年關懷大富翁</p>
+    <div
+      data-team-theme={selectedTheme.slug}
+      style={getTeamThemeStyle(selectedTeamGroup.name)}
+      className="min-w-0 overflow-x-clip pb-4"
+    >
+      <header className="pb-4 pt-2 text-team-on-primary">
+        <p className="text-xs font-bold tracking-[0.18em]">青年關懷大富翁</p>
         <div className="mt-1 flex items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl font-black tracking-tight">同行地圖</h1>
-            <p className="mt-1 text-sm text-muted">每累積 10 步，旗子前進 1 格</p>
+            <p className="mt-1 text-sm text-team-on-primary/75">每累積 10 步，旗子前進 1 格</p>
           </div>
-          <span className="shrink-0 rounded-full bg-brand-soft px-2.5 py-1 text-xs font-bold text-brand">
+          <span className="shrink-0 rounded-full bg-team-on-primary/15 px-2.5 py-1 text-xs font-bold text-team-on-primary">
             36 格
           </span>
         </div>
@@ -303,13 +312,13 @@ export function MapExperience({ teamGroups, initialTeamGroupId, error }: MapData
               aria-selected={isSelected}
               onClick={() => handleTeamGroupChange(teamGroup)}
               className={`relative min-w-0 rounded-xl px-0.5 py-2 text-[11px] font-bold leading-tight ${
-                isSelected ? "text-white" : "text-muted"
+                isSelected ? "text-team-control-text" : "text-muted"
               }`}
             >
               {isSelected ? (
                 <motion.span
                   layoutId="selected-team-group"
-                  className="absolute inset-0 rounded-xl bg-brand"
+                  className="absolute inset-0 rounded-xl border border-team-control-border bg-team-control ring-2 ring-team-control-border"
                   transition={{ type: "spring", stiffness: 420, damping: 34 }}
                 />
               ) : null}
@@ -324,7 +333,7 @@ export function MapExperience({ teamGroups, initialTeamGroupId, error }: MapData
           <h2 className="text-sm font-black">{selectedTeamGroup.name}</h2>
           <p className="text-xs font-semibold text-muted">{selectedTeamGroup.teams.length} 個小組</p>
         </div>
-        <div className="grid min-w-0 grid-cols-6 gap-[3px] rounded-2xl bg-[#dfe7e3] p-[3px] shadow-[0_8px_24px_rgba(29,39,36,0.09)]">
+        <div className="grid min-w-0 grid-cols-6 gap-[3px] rounded-2xl bg-border p-[3px] shadow-[0_8px_24px_rgba(29,39,36,0.09)]">
           {BOARD_SQUARES.map((square) => (
             <MapSquare
               key={square}
