@@ -119,7 +119,7 @@ export function OnboardingForm({
         <h1 className="mt-1 text-3xl font-black tracking-tight">
           {profile ? "修改我的資料" : "先認識你一下"}
         </h1>
-        <p className="mt-3 max-w-sm text-sm leading-6 text-team-on-primary/75">
+        <p className="mt-3 max-w-sm text-sm font-medium leading-6 text-team-on-primary">
           {profile
             ? "選擇不同團隊時，主視覺會立即跟著切換。"
             : "完成基本資料後，就可以開始參與任務與查看小組進度。"}

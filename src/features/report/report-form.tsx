@@ -39,7 +39,7 @@ export function ReportSuccessState({ result }: { result: ReportSuccess }) {
         <p className="text-3xl" aria-hidden="true">🎉</p>
         <h2 className="mt-2 text-2xl font-black">回報成功！</h2>
         <p className="mt-2 text-base font-bold">{result.missionName}</p>
-        <p className="mt-1 text-sm text-team-control-text/75">
+        <p className="mt-1 text-sm text-team-control-text">
           {result.is3x5 ? "3×5 禱告名單" : "一般關懷"}・活動 W{result.activityWeek}
         </p>
         {result.isTest ? (
@@ -530,18 +530,18 @@ export function ReportForm({
       <section className="rounded-3xl bg-foreground p-5 text-white shadow-[0_10px_28px_rgba(29,39,36,0.18)]">
         {selectedMission && estimatedScore !== null && estimatedMissionScore !== null ? (
           <>
-            <p className="text-xs font-bold text-white/60">即時預估</p>
+            <p className="text-xs font-bold text-white">即時預估</p>
             <p className="mt-2 text-sm font-bold">任務：{selectedMission.name}</p>
-            <p className="mt-1 text-sm text-white/75">
+            <p className="mt-1 text-sm text-white">
               基本步數：{selectedMission.baseScore}
             </p>
-            <p className="mt-1 text-sm text-white/75">
+            <p className="mt-1 text-sm text-white">
               3×5 加碼：{is3x5 ? "×2" : is3x5 === false ? "無" : "尚未選擇"}
             </p>
-            <p className="mt-1 text-sm text-white/75">
+            <p className="mt-1 text-sm text-white">
               任務小計：{estimatedMissionScore}步
             </p>
-            <p className="mt-1 text-sm text-white/75">
+            <p className="mt-1 text-sm text-white">
               照片 BONUS：{photo ? "+3步" : "無"}
             </p>
             <div className="mt-4 flex items-end justify-between gap-4 border-t border-white/15 pt-4">
@@ -552,7 +552,7 @@ export function ReportForm({
             </div>
           </>
         ) : (
-          <p className="text-sm font-bold leading-6 text-white/70">
+          <p className="text-sm font-bold leading-6 text-white">
             選擇任務後，這裡會顯示預估步數。真正分數由系統送出時重新計算。
           </p>
         )}

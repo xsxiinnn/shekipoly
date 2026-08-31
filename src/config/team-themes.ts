@@ -114,7 +114,9 @@ export function getTeamThemeStyle(
     "--foreground": theme.textPrimary,
     "--surface": theme.surface,
     "--muted": theme.muted,
-    "--brand": theme.primary,
+    // Brand-colored text and focus indicators live on light surfaces, so use
+    // the accessible ink color rather than the page background color.
+    "--brand": theme.textPrimary,
     "--brand-soft": theme.softBackground,
     "--border": theme.border,
     "--team-secondary": theme.secondary,

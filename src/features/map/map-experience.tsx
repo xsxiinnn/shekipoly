@@ -263,7 +263,7 @@ export function MapExperience({ teamGroups, initialTeamGroupId, error }: MapData
 
   if (!selectedTeamGroup) {
     return (
-      <section className="mt-4 rounded-3xl border border-dashed border-border bg-surface/60 px-5 py-12 text-center">
+      <section className="mt-4 rounded-3xl border border-dashed border-border bg-surface px-5 py-12 text-center shadow-sm">
         <p className="text-sm font-black text-foreground">
           {error ? "地圖載入失敗" : "目前還沒有小組開始前進。"}
         </p>
@@ -288,9 +288,9 @@ export function MapExperience({ teamGroups, initialTeamGroupId, error }: MapData
         <div className="mt-1 flex items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl font-black tracking-tight">同行地圖</h1>
-            <p className="mt-1 text-sm text-team-on-primary/75">每累積 10 步，旗子前進 1 格</p>
+            <p className="mt-1 text-sm text-team-on-primary">每累積 10 步，旗子前進 1 格</p>
           </div>
-          <span className="shrink-0 rounded-full bg-team-on-primary/15 px-2.5 py-1 text-xs font-bold text-team-on-primary">
+          <span className="shrink-0 rounded-full border border-team-control-border bg-team-control px-2.5 py-1 text-xs font-bold text-team-control-text">
             36 格
           </span>
         </div>
@@ -329,9 +329,9 @@ export function MapExperience({ teamGroups, initialTeamGroupId, error }: MapData
       </div>
 
       <section aria-label={`${selectedTeamGroup.name}同行地圖`} className="mt-4">
-        <div className="mb-2 flex items-center justify-between gap-3 px-0.5">
+        <div className="mb-2 flex items-center justify-between gap-3 px-0.5 text-team-on-primary">
           <h2 className="text-sm font-black">{selectedTeamGroup.name}</h2>
-          <p className="text-xs font-semibold text-muted">{selectedTeamGroup.teams.length} 個小組</p>
+          <p className="text-xs font-semibold">{selectedTeamGroup.teams.length} 個小組</p>
         </div>
         <div className="grid min-w-0 grid-cols-6 gap-[3px] rounded-2xl bg-border p-[3px] shadow-[0_8px_24px_rgba(29,39,36,0.09)]">
           {BOARD_SQUARES.map((square) => (
@@ -343,20 +343,20 @@ export function MapExperience({ teamGroups, initialTeamGroupId, error }: MapData
             />
           ))}
         </div>
-        <p className="mt-2 px-1 text-center text-[11px] font-medium text-muted">
+        <p className="mt-2 px-1 text-center text-[11px] font-semibold text-team-on-primary">
           點選格子查看所在小組
         </p>
       </section>
 
       <section className="mt-7" aria-labelledby="team-progress-title">
-        <div className="mb-3 flex items-end justify-between gap-3">
+        <div className="mb-3 flex items-end justify-between gap-3 text-team-on-primary">
           <div>
-            <p className="text-xs font-bold tracking-[0.14em] text-brand">小組進度</p>
+            <p className="text-xs font-bold tracking-[0.14em]">小組進度</p>
             <h2 id="team-progress-title" className="mt-0.5 text-xl font-black">
               {selectedTeamGroup.name}小組
             </h2>
           </div>
-          <span className="text-xs text-muted">累積／目前格</span>
+          <span className="text-xs font-semibold">累積／目前格</span>
         </div>
 
         {selectedTeamGroup.teams.length > 0 ? (
@@ -368,7 +368,7 @@ export function MapExperience({ teamGroups, initialTeamGroupId, error }: MapData
               ))}
           </ul>
         ) : (
-          <div className="rounded-3xl border border-dashed border-border bg-surface/60 px-5 py-10 text-center text-sm text-muted">
+          <div className="rounded-3xl border border-dashed border-border bg-surface px-5 py-10 text-center text-sm text-muted shadow-sm">
             目前還沒有小組開始前進。
           </div>
         )}

@@ -28,7 +28,7 @@ export default async function ReportPage() {
           青年關懷大富翁
         </p>
         <h1 className="mt-1 text-2xl font-black tracking-tight">探訪回報</h1>
-        <p className="mt-2 text-sm leading-6 text-team-on-primary/75">
+        <p className="mt-2 text-sm font-medium leading-6 text-team-on-primary">
           每一次關心都很重要，完成後由系統計算小組步數。
         </p>
       </header>
@@ -39,7 +39,7 @@ export default async function ReportPage() {
         <section className="mt-5 rounded-3xl border border-team-control-border bg-team-control p-5 text-team-control-text shadow-[0_10px_28px_rgba(29,39,36,0.16)]">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-xs font-bold text-team-control-text/70">回報人</p>
+              <p className="text-xs font-bold text-team-control-text">回報人</p>
               <h2 className="mt-1 truncate text-2xl font-black">{data.profile.name}</h2>
             </div>
             <Link

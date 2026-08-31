@@ -38,7 +38,7 @@ export default async function PhotosPage({
           青年關懷大富翁
         </p>
         <h1 className="mt-1 text-2xl font-black tracking-tight">四團隊照片牆</h1>
-        <p className="mt-2 text-sm leading-6 text-team-on-primary/75">
+        <p className="mt-2 text-sm font-medium leading-6 text-team-on-primary">
           一起看看活動中留下的關懷足跡。
         </p>
       </header>
