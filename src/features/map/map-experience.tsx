@@ -3,9 +3,15 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 
-import { getTeamThemeStyle, resolveTeamTheme } from "@/config/team-themes";
+import {
+  getTeamThemeStyle,
+  resolveTeamTheme,
+  type TeamThemeSlug,
+} from "@/config/team-themes";
 import { useStudentShellTheme } from "@/features/theme/use-student-shell-theme";
 
+import { MapCellArt } from "./map-cell-art";
+import { getMapCellImage, getMapCellShape } from "./map-shapes";
 import type { MapData, MapTeam, MapTeamGroup } from "./types";
 
 const BOARD_SQUARES = [
@@ -47,7 +53,7 @@ function SquareFlags({ teams }: { teams: MapTeam[] }) {
   const hiddenCount = teams.length - visibleTeams.length;
 
   return (
-    <div className="absolute inset-x-0.5 bottom-0.5 flex items-end justify-center gap-px">
+    <div className="absolute inset-x-[8%] bottom-[7%] flex origin-bottom scale-[0.78] items-end justify-center gap-px min-[360px]:scale-100">
       {visibleTeams.map((team, index) => (
         <motion.span
           key={team.id}
@@ -75,36 +81,30 @@ function SquareFlags({ teams }: { teams: MapTeam[] }) {
 function MapSquare({
   square,
   teams,
+  teamThemeSlug,
   onSelect,
 }: {
   square: number;
   teams: MapTeam[];
+  teamThemeSlug: TeamThemeSlug;
   onSelect: () => void;
 }) {
   const specialLabel = SPECIAL_SQUARES[square];
   const teamDescription = teams.length === 0 ? "沒有小組" : `${teams.length} 個小組`;
+  const shape = getMapCellShape(teamThemeSlug);
+  const image = getMapCellImage(teamThemeSlug, square);
 
   return (
     <button
       type="button"
       onClick={onSelect}
       aria-label={`第 ${square} 格${specialLabel ? `，${specialLabel}` : ""}，${teamDescription}`}
-      className={`relative aspect-square min-w-0 overflow-hidden rounded-[10px] border text-left shadow-[0_2px_7px_rgba(29,39,36,0.05)] transition-transform active:scale-95 ${
-        specialLabel
-          ? "border-[#e4ba67] bg-[#fff1cc]"
-          : square % 2 === 0
-            ? "border-border bg-white"
-            : "border-[#d8e9e1] bg-[#eef7f2]"
-      }`}
+      data-map-cell-shape={shape}
+      data-map-cell-image={image}
+      data-map-square={square}
+      className="relative aspect-square min-w-0 overflow-hidden text-center transition-transform active:scale-95 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-team-on-primary"
     >
-      <span className="absolute left-1 top-0.5 text-[9px] font-black tabular-nums text-foreground/70">
-        {String(square).padStart(2, "0")}
-      </span>
-      {specialLabel ? (
-        <span className="absolute inset-x-0 top-[34%] px-0.5 text-center text-[8px] font-black leading-none text-[#8d5d13]">
-          {specialLabel}
-        </span>
-      ) : null}
+      <MapCellArt teamThemeSlug={teamThemeSlug} square={square} />
       {teams.length > 0 ? <SquareFlags teams={teams} /> : null}
     </button>
   );
@@ -333,12 +333,13 @@ export function MapExperience({ teamGroups, initialTeamGroupId, error }: MapData
           <h2 className="text-sm font-black">{selectedTeamGroup.name}</h2>
           <p className="text-xs font-semibold">{selectedTeamGroup.teams.length} 個小組</p>
         </div>
-        <div className="grid min-w-0 grid-cols-6 gap-[3px] rounded-2xl bg-border p-[3px] shadow-[0_8px_24px_rgba(29,39,36,0.09)]">
+        <div className="grid min-w-0 grid-cols-6 overflow-hidden rounded-2xl border border-team-control-border bg-team-control-border">
           {BOARD_SQUARES.map((square) => (
             <MapSquare
               key={square}
               square={square}
               teams={teamsBySquare.get(square) ?? []}
+              teamThemeSlug={selectedTheme.slug}
               onSelect={() => setSelectedSquare(square)}
             />
           ))}
