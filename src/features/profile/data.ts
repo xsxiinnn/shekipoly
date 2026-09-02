@@ -1,8 +1,10 @@
 import "server-only";
 
 import { unstable_rethrow } from "next/navigation";
+import { cache } from "react";
 
 import { hasSupabaseConfig } from "@/lib/supabase/config";
+import { startPerformanceTimer } from "@/lib/performance";
 import { createClient } from "@/lib/supabase/server";
 
 export type ProfileSummary = {
@@ -15,11 +17,19 @@ export type ProfileSummary = {
 export type ProfileSummaryResult = {
   profile: ProfileSummary | null;
   error: string | null;
+  errorKind: "config" | "session" | "profile" | "unknown" | null;
 };
 
-export async function getCurrentProfileSummary(): Promise<ProfileSummaryResult> {
+/** React cache is request-scoped and only deduplicates this user's active render. */
+export const getCurrentProfileSummary = cache(async (): Promise<ProfileSummaryResult> => {
+  const finishTiming = startPerformanceTimer("getProfile");
   if (!hasSupabaseConfig()) {
-    return { profile: null, error: "尚未設定 Supabase 連線。" };
+    finishTiming();
+    return {
+      profile: null,
+      error: "尚未設定 Supabase 連線。",
+      errorKind: "config",
+    };
   }
 
   try {
@@ -28,53 +38,37 @@ export async function getCurrentProfileSummary(): Promise<ProfileSummaryResult> 
     const userId = claimsData?.claims?.sub;
 
     if (!userId) {
-      return { profile: null, error: null };
+      return { profile: null, error: null, errorKind: "session" };
     }
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("name, team_id")
+      .select(
+        "name, team_id, zone_id, team:teams!profiles_team_zone_fkey(name, zone_id, is_active, zone:zones!teams_zone_id_fkey(name, team_group_id, is_active, team_group:team_groups!zones_team_group_id_fkey(name, is_active)))",
+      )
       .eq("id", userId)
       .maybeSingle();
 
     if (profileError) throw profileError;
-    if (!profile) return { profile: null, error: null };
-
-    const { data: team, error: teamError } = await supabase
-      .from("teams")
-      .select("name, zone_id")
-      .eq("id", profile.team_id)
-      .single();
-
-    if (teamError) throw teamError;
-
-    const { data: zone, error: zoneError } = await supabase
-      .from("zones")
-      .select("name, team_group_id")
-      .eq("id", team.zone_id)
-      .single();
-
-    if (zoneError) throw zoneError;
-
-    if (!zone.team_group_id) {
-      return {
-        profile: {
-          name: profile.name,
-          teamGroupName: "待重新選擇團隊",
-          zoneName: zone.name,
-          teamName: team.name,
-        },
-        error: null,
-      };
+    const team = Array.isArray(profile?.team) ? profile.team[0] : profile?.team;
+    const zone = Array.isArray(team?.zone) ? team.zone[0] : team?.zone;
+    const teamGroup = Array.isArray(zone?.team_group)
+      ? zone.team_group[0]
+      : zone?.team_group;
+    if (
+      !profile?.team_id ||
+      !profile.zone_id ||
+      !team ||
+      !team.is_active ||
+      team.zone_id !== profile.zone_id ||
+      !zone ||
+      !zone.is_active ||
+      !zone.team_group_id ||
+      !teamGroup ||
+      !teamGroup.is_active
+    ) {
+      return { profile: null, error: null, errorKind: "profile" };
     }
-
-    const { data: teamGroup, error: teamGroupError } = await supabase
-      .from("team_groups")
-      .select("name")
-      .eq("id", zone.team_group_id)
-      .single();
-
-    if (teamGroupError) throw teamGroupError;
 
     return {
       profile: {
@@ -84,10 +78,17 @@ export async function getCurrentProfileSummary(): Promise<ProfileSummaryResult> 
         teamName: team.name,
       },
       error: null,
+      errorKind: null,
     };
   } catch (error) {
     unstable_rethrow(error);
     console.error("Unable to load profile summary", error);
-    return { profile: null, error: "目前無法載入個人資料。" };
+    return {
+      profile: null,
+      error: "目前無法載入個人資料。",
+      errorKind: "unknown",
+    };
+  } finally {
+    finishTiming();
   }
-}
+});

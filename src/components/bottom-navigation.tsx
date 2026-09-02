@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -97,6 +97,41 @@ const navigationItems: NavigationItem[] = [
   },
 ];
 
+function NavigationItemContent({
+  icon,
+  isActive,
+  label,
+}: {
+  icon: ReactNode;
+  isActive: boolean;
+  label: string;
+}) {
+  const { pending } = useLinkStatus();
+
+  return (
+    <>
+      <motion.span
+        className={`relative ${isActive ? "text-brand" : "text-muted"}`}
+        animate={{ y: isActive ? -1 : 0, opacity: pending ? 0.55 : 1 }}
+      >
+        {icon}
+      </motion.span>
+      <span className={`relative ${isActive ? "text-brand" : "text-muted"}`}>
+        {label}
+      </span>
+      <span
+        aria-hidden="true"
+        className={`absolute right-2 top-1 size-2 rounded-full bg-brand transition-opacity ${
+          pending ? "animate-pulse opacity-100" : "opacity-0"
+        }`}
+      />
+      <span className="sr-only" aria-live="polite">
+        {pending ? `正在前往${label}` : ""}
+      </span>
+    </>
+  );
+}
+
 export function BottomNavigation() {
   const pathname = usePathname();
 
@@ -123,17 +158,11 @@ export function BottomNavigation() {
                     transition={{ type: "spring", stiffness: 420, damping: 34 }}
                   />
                 ) : null}
-                <motion.span
-                  className={`relative ${isActive ? "text-brand" : "text-muted"}`}
-                  animate={{ y: isActive ? -1 : 0 }}
-                >
-                  {item.icon}
-                </motion.span>
-                <span
-                  className={`relative ${isActive ? "text-brand" : "text-muted"}`}
-                >
-                  {item.label}
-                </span>
+                <NavigationItemContent
+                  icon={item.icon}
+                  isActive={isActive}
+                  label={item.label}
+                />
               </Link>
             </li>
           );

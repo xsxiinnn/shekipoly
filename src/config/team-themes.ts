@@ -137,5 +137,5 @@ export function getMissionImage(
 ) {
   if (!teamThemeSlug || !Number.isInteger(missionSortOrder)) return null;
   if (missionSortOrder < 1 || missionSortOrder > 6) return null;
-  return `/missions/${teamThemeSlug}/mission-${missionSortOrder}.png`;
+  return `/missions/optimized/${teamThemeSlug}/mission-${missionSortOrder}.webp`;
 }

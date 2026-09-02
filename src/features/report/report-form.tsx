@@ -13,6 +13,7 @@ import {
 
 import { createClient } from "@/lib/supabase/client";
 import { getMissionImage } from "@/config/team-themes";
+import { startPerformanceTimer } from "@/lib/performance";
 
 import { submitReport } from "./actions";
 import { hasHeicFileHint, preparePhoto, type PreparedPhoto } from "./photo";
@@ -99,12 +100,12 @@ export function ReportSuccessState({ result }: { result: ReportSuccess }) {
         </dl>
 
         <div className="space-y-2 pt-1">
-          <a
+          <Link
             href="/report"
             className="flex h-12 items-center justify-center rounded-2xl border-2 border-team-control-border bg-team-control text-base font-black text-team-control-text"
           >
             再回報一位
-          </a>
+          </Link>
           <Link
             href="/map"
             className="flex h-12 items-center justify-center rounded-2xl border border-border text-base font-black text-foreground"
@@ -146,6 +147,7 @@ export function ReportForm({
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const submittingRef = useRef(false);
+  const submitRoundTripTimerRef = useRef<(() => number | undefined) | null>(null);
   const [state, formAction, isPending] = useActionState(submitReport, initialState);
 
   useEffect(() => {
@@ -155,13 +157,20 @@ export function ReportForm({
   }, [photo]);
 
   useEffect(() => {
-    if (!isPending) submittingRef.current = false;
-  }, [isPending]);
+    if (!isPending) {
+      submittingRef.current = false;
+      if (state.status !== "idle") {
+        submitRoundTripTimerRef.current?.();
+        submitRoundTripTimerRef.current = null;
+      }
+    }
+  }, [isPending, state.status]);
 
   const isBusy = isPending || isUploadingPhoto || isProcessingPhoto;
 
   async function handlePhotoChange(file: File | undefined) {
     if (!file) return;
+    const finishTiming = startPerformanceTimer("photoNormalization");
     setPhotoError(null);
     setIsProcessingPhoto(true);
     setIsProcessingIphonePhoto(hasHeicFileHint(file.type, file.name));
@@ -178,6 +187,7 @@ export function ReportForm({
           : "這張照片目前無法處理，請換一張照片再試一次。",
       );
     } finally {
+      finishTiming();
       setIsProcessingPhoto(false);
       setIsProcessingIphonePhoto(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -204,21 +214,29 @@ export function ReportForm({
     try {
       if (photo) {
         setIsUploadingPhoto(true);
+        const finishUploadTiming = startPerformanceTimer("photoUpload");
         const supabase = createClient();
-        const { data, error: userError } = await supabase.auth.getUser();
-        if (userError || !data.user) throw new Error("AUTH_REQUIRED");
+        try {
+          // This only obtains the folder name. Storage RLS and the Server Action
+          // still independently verify the authenticated user and ownership.
+          const { data, error: sessionError } = await supabase.auth.getSession();
+          const userId = data.session?.user.id;
+          if (sessionError || !userId) throw new Error("AUTH_REQUIRED");
 
-        uploadedPath = `${data.user.id}/${crypto.randomUUID()}.${photo.extension}`;
-        const { error: uploadError } = await supabase.storage
-          .from("mission-photos")
-          .upload(uploadedPath, photo.blob, {
-            cacheControl: "3600",
-            contentType: photo.mimeType,
-            upsert: false,
-          });
-        if (uploadError) {
-          console.error("Unable to upload mission photo", uploadError);
-          throw new Error("UPLOAD_FAILED");
+          uploadedPath = `${userId}/${crypto.randomUUID()}.${photo.extension}`;
+          const { error: uploadError } = await supabase.storage
+            .from("mission-photos")
+            .upload(uploadedPath, photo.blob, {
+              cacheControl: "3600",
+              contentType: photo.mimeType,
+              upsert: false,
+            });
+          if (uploadError) {
+            console.error("Unable to upload mission photo", uploadError);
+            throw new Error("UPLOAD_FAILED");
+          }
+        } finally {
+          finishUploadTiming();
         }
       }
 
@@ -230,6 +248,9 @@ export function ReportForm({
         );
       }
       setIsUploadingPhoto(false);
+      submitRoundTripTimerRef.current = startPerformanceTimer(
+        "submitReport client round trip",
+      );
       startTransition(() => formAction(payload));
     } catch (error) {
       console.error("Mission photo preparation failed", error);
@@ -497,9 +518,6 @@ export function ReportForm({
         />
         <p className="mt-3 text-xs font-semibold leading-5 text-muted">
           支援 JPG、PNG、WebP、HEIC、HEIF；系統會先轉換與壓縮再上傳。照片為選填。
-        </p>
-        <p className="mt-2 rounded-2xl bg-amber-50 px-3 py-2.5 text-xs font-semibold leading-5 text-amber-900">
-          上傳前，請確認照片中的人物知道並同意出現在活動照片牆。
         </p>
         {photoError || state.fieldErrors?.photo ? (
           <p role="alert" className="mt-2 text-sm font-bold leading-6 text-red-600">

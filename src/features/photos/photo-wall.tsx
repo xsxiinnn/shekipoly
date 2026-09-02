@@ -59,7 +59,7 @@ export function PhotoWall({ data }: { data: PhotoWallData }) {
 
       {data.items.length > 0 ? (
         <div className="mt-5 grid grid-cols-2 gap-3">
-          {data.items.map((photo) => (
+          {data.items.map((photo, index) => (
             <button
               key={photo.id}
               type="button"
@@ -74,7 +74,8 @@ export function PhotoWall({ data }: { data: PhotoWallData }) {
               <img
                 src={photo.signedUrl}
                 alt={`${photo.teamName}的活動照片`}
-                loading="lazy"
+                loading={index < 2 ? "eager" : "lazy"}
+                fetchPriority={index < 2 ? "high" : "auto"}
                 decoding="async"
                 className="aspect-[4/5] w-full bg-background object-cover"
               />

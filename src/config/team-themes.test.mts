@@ -52,7 +52,7 @@ test("mission images map only valid sort orders 1 through 6", () => {
   for (const [, slug] of EXPECTED_THEMES) {
     for (let sortOrder = 1; sortOrder <= 6; sortOrder += 1) {
       const path = getMissionImage(slug, sortOrder);
-      assert.equal(path, `/missions/${slug}/mission-${sortOrder}.png`);
+      assert.equal(path, `/missions/optimized/${slug}/mission-${sortOrder}.webp`);
       assert.ok(existsSync(`public${path}`), `missing ${path}`);
     }
   }

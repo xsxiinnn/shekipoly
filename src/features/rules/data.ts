@@ -3,6 +3,7 @@ import "server-only";
 import { unstable_rethrow } from "next/navigation";
 
 import { hasSupabaseConfig } from "@/lib/supabase/config";
+import { startPerformanceTimer } from "@/lib/performance";
 import { createClient } from "@/lib/supabase/server";
 
 export type RulesData = {
@@ -23,12 +24,15 @@ export type RulesData = {
 const EMPTY_DATA: RulesData = { missions: [], teamGroups: [], error: null };
 
 export async function getRulesData(): Promise<RulesData> {
+  const finishTiming = startPerformanceTimer("getRulesData");
   if (!hasSupabaseConfig()) {
+    finishTiming();
     return { ...EMPTY_DATA, error: "遊戲資料暫時無法載入，請稍後再試。" };
   }
 
   try {
     const supabase = await createClient();
+    const finishQueryTiming = startPerformanceTimer("getRulesData queries");
     const [missionsResult, groupsResult, zonesResult] = await Promise.all([
       supabase
         .from("missions")
@@ -45,7 +49,7 @@ export async function getRulesData(): Promise<RulesData> {
         .select("id, name, team_group_id")
         .eq("is_active", true)
         .order("sort_order"),
-    ]);
+    ]).finally(finishQueryTiming);
 
     const error = missionsResult.error ?? groupsResult.error ?? zonesResult.error;
     if (error) throw error;
@@ -71,5 +75,7 @@ export async function getRulesData(): Promise<RulesData> {
     unstable_rethrow(error);
     console.error("Unable to load rules reference data", error);
     return { ...EMPTY_DATA, error: "遊戲資料暫時無法載入，請稍後再試。" };
+  } finally {
+    finishTiming();
   }
 }

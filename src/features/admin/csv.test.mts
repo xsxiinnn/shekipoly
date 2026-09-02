@@ -17,7 +17,7 @@ const row: AdminReportRow = {
   teamName: "品凡小組",
   friendAlias: "=HYPERLINK(\"bad\")",
   missionId: 5,
-  missionName: "任務五｜來烤肉",
+  missionName: "任務五｜邀約烤肉",
   is3x5: true,
   missionScore: 6,
   photoBonus: 3,

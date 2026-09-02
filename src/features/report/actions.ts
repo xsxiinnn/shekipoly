@@ -8,6 +8,7 @@ import {
 } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getServerPrelaunchTestMode } from "@/features/activity/server";
+import { startPerformanceTimer } from "@/lib/performance";
 
 import { resolveDevelopmentActivityWeek } from "./development-week";
 import { detectPhotoMime, photoMimeMatchesPath } from "./photo-signature";
@@ -132,6 +133,7 @@ export async function submitReport(
   _previousState: ReportActionState,
   formData: FormData,
 ): Promise<ReportActionState> {
+  const finishSubmitTiming = startPerformanceTimer("submitReport");
   const friendValue = formData.get("friend_alias");
   const friendAlias = typeof friendValue === "string" ? friendValue.trim() : "";
   const missionId = parseMissionId(formData.get("mission_id"));
@@ -162,7 +164,10 @@ export async function submitReport(
   let authenticatedUserId: string | null = null;
   try {
     supabase = await createClient();
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
+    const finishAuthTiming = startPerformanceTimer("submitReport auth");
+    const { data: claimsData, error: claimsError } = await supabase.auth
+      .getClaims()
+      .finally(finishAuthTiming);
 
     if (claimsError || !claimsData?.claims?.sub) {
       return { status: "error", message: "登入狀態已失效，請重新整理後再試。" };
@@ -215,36 +220,49 @@ export async function submitReport(
       };
     }
 
-    if (photoPath && !(await verifyUploadedPhotoBytes(supabase, photoPath))) {
-      console.error("Mission photo content signature validation failed.");
-      await cleanupUploadedPhoto(supabase, authenticatedUserId, photoPath);
-      return {
-        status: "error",
-        message: "照片驗證沒有成功，請重新選擇照片後再試一次。",
-      };
+    if (photoPath) {
+      const finishPhotoVerification = startPerformanceTimer(
+        "submitReport photo verification",
+      );
+      const photoIsValid = await verifyUploadedPhotoBytes(supabase, photoPath).finally(
+        finishPhotoVerification,
+      );
+      if (!photoIsValid) {
+        console.error("Mission photo content signature validation failed.");
+        await cleanupUploadedPhoto(supabase, authenticatedUserId, photoPath);
+        return {
+          status: "error",
+          message: "照片驗證沒有成功，請重新選擇照片後再試一次。",
+        };
+      }
     }
 
     let rpcResult;
-    if (prelaunch.enabled || developmentWeek.week !== null || photoPath) {
-      rpcResult = await createAdminClient().rpc("submit_report_trusted", {
-        p_reporter_id: authenticatedUserId,
-        p_friend_alias: friendAlias,
-        p_mission_id: missionId!,
-        p_is_3x5: is3x5!,
-        p_story: story,
-        p_photo_path: photoPath,
-        p_activity_week_override: prelaunch.enabled
-          ? prelaunch.week
-          : developmentWeek.week,
-        p_is_test: prelaunch.enabled || developmentWeek.week !== null,
-      });
-    } else {
-      rpcResult = await supabase.rpc("submit_report", {
-            p_friend_alias: friendAlias,
-            p_mission_id: missionId!,
-            p_is_3x5: is3x5!,
-            p_story: story,
-          });
+    const finishRpcTiming = startPerformanceTimer("scoringRPC");
+    try {
+      if (prelaunch.enabled || developmentWeek.week !== null || photoPath) {
+        rpcResult = await createAdminClient().rpc("submit_report_trusted", {
+          p_reporter_id: authenticatedUserId,
+          p_friend_alias: friendAlias,
+          p_mission_id: missionId!,
+          p_is_3x5: is3x5!,
+          p_story: story,
+          p_photo_path: photoPath,
+          p_activity_week_override: prelaunch.enabled
+            ? prelaunch.week
+            : developmentWeek.week,
+          p_is_test: prelaunch.enabled || developmentWeek.week !== null,
+        });
+      } else {
+        rpcResult = await supabase.rpc("submit_report", {
+          p_friend_alias: friendAlias,
+          p_mission_id: missionId!,
+          p_is_3x5: is3x5!,
+          p_story: story,
+        });
+      }
+    } finally {
+      finishRpcTiming();
     }
 
     const { data, error } = rpcResult;
@@ -261,7 +279,6 @@ export async function submitReport(
       return { status: "error", message: "回報已送出，但進度載入失敗，請查看地圖確認。" };
     }
 
-    revalidatePath("/report");
     revalidatePath("/map");
     revalidatePath("/photos");
 
@@ -275,5 +292,7 @@ export async function submitReport(
       status: "error",
       message: "目前無法連線到回報服務，請稍後再試。",
     };
+  } finally {
+    finishSubmitTiming();
   }
 }

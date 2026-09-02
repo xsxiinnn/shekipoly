@@ -3,7 +3,9 @@ import "server-only";
 import { unstable_rethrow } from "next/navigation";
 
 import { getTeamTheme } from "@/config/team-themes";
+import { getCurrentProfileSummary } from "@/features/profile/data";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
+import { startPerformanceTimer } from "@/lib/performance";
 import { createClient } from "@/lib/supabase/server";
 
 import type { ReportPageData } from "./types";
@@ -16,7 +18,9 @@ const EMPTY_DATA: ReportPageData = {
 };
 
 export async function getReportPageData(): Promise<ReportPageData> {
+  const finishTiming = startPerformanceTimer("getReportData");
   if (!hasSupabaseConfig()) {
+    finishTiming();
     return {
       ...EMPTY_DATA,
       error: "尚未設定 Supabase 連線。",
@@ -26,62 +30,31 @@ export async function getReportPageData(): Promise<ReportPageData> {
 
   try {
     const supabase = await createClient();
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
-    const userId = claimsData?.claims?.sub;
-
-    if (claimsError || !userId) {
-      return { ...EMPTY_DATA, errorKind: "session" };
-    }
-
+    const finishQueryTiming = startPerformanceTimer("getReportData queries");
     const [profileResult, missionsResult] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("name, team_id")
-        .eq("id", userId)
-        .maybeSingle(),
+      getCurrentProfileSummary(),
       supabase
         .from("missions")
         .select("id, name, description, base_score")
         .eq("is_active", true)
         .order("id"),
-    ]);
+    ]).finally(finishQueryTiming);
 
-    if (profileResult.error) throw profileResult.error;
     if (missionsResult.error) throw missionsResult.error;
-
-    if (!profileResult.data?.team_id) {
-      return { ...EMPTY_DATA, errorKind: "profile" };
+    if (!profileResult.profile) {
+      return {
+        ...EMPTY_DATA,
+        error: profileResult.error,
+        errorKind:
+          profileResult.errorKind === "session"
+            ? "session"
+            : profileResult.errorKind === "config"
+              ? "config"
+              : profileResult.errorKind === "unknown"
+                ? "unknown"
+                : "profile",
+      };
     }
-
-    const { data: team, error: teamError } = await supabase
-      .from("teams")
-      .select("name, zone_id")
-      .eq("id", profileResult.data.team_id)
-      .eq("is_active", true)
-      .maybeSingle();
-
-    if (teamError) throw teamError;
-    if (!team) return { ...EMPTY_DATA, errorKind: "profile" };
-
-    const { data: zone, error: zoneError } = await supabase
-      .from("zones")
-      .select("name, team_group_id")
-      .eq("id", team.zone_id)
-      .eq("is_active", true)
-      .maybeSingle();
-
-    if (zoneError) throw zoneError;
-    if (!zone?.team_group_id) return { ...EMPTY_DATA, errorKind: "profile" };
-
-    const { data: teamGroup, error: teamGroupError } = await supabase
-      .from("team_groups")
-      .select("name")
-      .eq("id", zone.team_group_id)
-      .eq("is_active", true)
-      .maybeSingle();
-
-    if (teamGroupError) throw teamGroupError;
-    if (!teamGroup) return { ...EMPTY_DATA, errorKind: "profile" };
 
     const missions = (missionsResult.data ?? []).map((mission) => ({
       id: mission.id,
@@ -93,19 +66,19 @@ export async function getReportPageData(): Promise<ReportPageData> {
       sortOrder: mission.id,
     }));
 
-    const teamTheme = getTeamTheme(teamGroup.name);
+    const teamTheme = getTeamTheme(profileResult.profile.teamGroupName);
     if (!teamTheme) {
       console.warn("Unknown team group theme; report will use text mission cards.", {
-        teamGroupName: teamGroup.name,
+        teamGroupName: profileResult.profile.teamGroupName,
       });
     }
 
     return {
       profile: {
-        name: profileResult.data.name,
-        teamGroupName: teamGroup.name,
-        zoneName: zone.name,
-        teamName: team.name,
+        name: profileResult.profile.name,
+        teamGroupName: profileResult.profile.teamGroupName,
+        zoneName: profileResult.profile.zoneName,
+        teamName: profileResult.profile.teamName,
         teamThemeSlug: teamTheme?.slug ?? null,
       },
       missions,
@@ -123,5 +96,7 @@ export async function getReportPageData(): Promise<ReportPageData> {
       error: "目前無法載入回報資料，請稍後再試。",
       errorKind: "unknown",
     };
+  } finally {
+    finishTiming();
   }
 }

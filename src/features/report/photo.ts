@@ -9,7 +9,7 @@ const SVG_ERROR = "請選擇照片檔案。";
 const PHOTO_PROCESSING_ERROR = "這張照片目前無法處理，請換一張照片再試一次。";
 const LARGE_PHOTO_ERROR = "這張照片比較大，處理失敗，請換一張照片再試一次。";
 const MAX_SOURCE_BYTES = 20 * 1024 * 1024;
-const TARGET_BYTES = 1.5 * 1024 * 1024;
+const TARGET_BYTES = 1 * 1024 * 1024;
 const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
 const MAX_DIMENSION = 1600;
 
@@ -193,7 +193,7 @@ async function renderNormalizedJpeg(decoded: DecodedPhoto, dimensions: { width: 
     context.fillRect(0, 0, dimensions.width, dimensions.height);
     context.drawImage(decoded.source, 0, 0, dimensions.width, dimensions.height);
     let result: Blob | null = null;
-    for (const quality of [0.86, 0.78, 0.7, 0.62]) {
+    for (const quality of [0.84, 0.76, 0.68, 0.6]) {
       result = await canvasToJpeg(canvas, quality);
       if (result && result.size <= TARGET_BYTES) break;
     }

@@ -3,14 +3,16 @@ import "server-only";
 import { unstable_rethrow } from "next/navigation";
 
 import { createAdminClient, hasSupabaseAdminConfig } from "@/lib/supabase/admin";
+import { getCurrentProfileSummary } from "@/features/profile/data";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
+import { startPerformanceTimer } from "@/lib/performance";
 import { createClient } from "@/lib/supabase/server";
 import { getServerActivityDataScope } from "@/features/activity/server";
 
 import type { PhotoWallData, PhotoWallItem } from "./types";
 import { isPhotoWallEligible, normalizePhotoWallStory } from "./visibility";
 
-const PAGE_SIZE = 24;
+const PAGE_SIZE = 16;
 const SIGNED_URL_SECONDS = 60 * 60;
 
 function emptyData(error: string | null = null, isTestMode = false): PhotoWallData {
@@ -35,18 +37,15 @@ export async function getPhotoWallData(options: {
   teamGroupId?: string;
   page?: string;
 }): Promise<PhotoWallData> {
+  const finishTiming = startPerformanceTimer("getPhotoWallData");
   const { isTestMode } = getServerActivityDataScope();
   if (!hasSupabaseConfig()) {
+    finishTiming();
     return { ...emptyData("尚未設定 Supabase 連線。", isTestMode), errorKind: "config" };
   }
 
   try {
     const supabase = await createClient();
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
-    const userId = claimsData?.claims?.sub;
-    if (claimsError || !userId) {
-      return { ...emptyData(null, isTestMode), errorKind: "session" };
-    }
 
     if (!hasSupabaseAdminConfig()) {
       console.error("Photo wall requires server-only SUPABASE_SERVICE_ROLE_KEY.");
@@ -56,9 +55,12 @@ export async function getPhotoWallData(options: {
       };
     }
 
+    const finishReferenceTiming = startPerformanceTimer(
+      "getPhotoWallData references",
+    );
     const [profileResult, teamGroupsResult, zonesResult, teamsResult, missionsResult] =
       await Promise.all([
-        supabase.from("profiles").select("team_id").eq("id", userId).maybeSingle(),
+        getCurrentProfileSummary(),
         supabase
           .from("team_groups")
           .select("id, name")
@@ -73,17 +75,27 @@ export async function getPhotoWallData(options: {
           .select("id, name, zone_id")
           .eq("is_active", true),
         supabase.from("missions").select("id, name").eq("is_active", true),
-      ]);
+      ]).finally(finishReferenceTiming);
 
     const referenceError =
-      profileResult.error ??
       teamGroupsResult.error ??
       zonesResult.error ??
       teamsResult.error ??
       missionsResult.error;
     if (referenceError) throw referenceError;
-    if (!profileResult.data?.team_id) {
-      return { ...emptyData(null, isTestMode), errorKind: "profile" };
+    if (!profileResult.profile) {
+      return {
+        ...emptyData(null, isTestMode),
+        error: profileResult.error,
+        errorKind:
+          profileResult.errorKind === "session"
+            ? "session"
+            : profileResult.errorKind === "config"
+              ? "config"
+              : profileResult.errorKind === "unknown"
+                ? "unknown"
+                : "profile",
+      };
     }
 
     const teamGroups = teamGroupsResult.data ?? [];
@@ -94,10 +106,9 @@ export async function getPhotoWallData(options: {
     const missionById = new Map(
       (missionsResult.data ?? []).map((mission) => [mission.id, mission.name] as const),
     );
-    const profileTeam = teamById.get(profileResult.data.team_id);
-    const profileTeamGroupId = profileTeam
-      ? zoneById.get(profileTeam.zone_id)?.team_group_id
-      : null;
+    const profileTeamGroupId = teamGroups.find(
+      (teamGroup) => teamGroup.name === profileResult.profile?.teamGroupName,
+    )?.id;
     if (!profileTeamGroupId) {
       return { ...emptyData(null, isTestMode), errorKind: "profile" };
     }
@@ -132,6 +143,7 @@ export async function getPhotoWallData(options: {
     }
 
     const admin = createAdminClient();
+    const finishReportsTiming = startPerformanceTimer("getPhotoWallData reports");
     const { data: reports, error: reportsError, count } = await admin
       .from("reports")
       .select(
@@ -146,6 +158,7 @@ export async function getPhotoWallData(options: {
       .in("team_id", selectedTeamIds)
       .order("created_at", { ascending: false })
       .range(0, requestedCount - 1);
+    finishReportsTiming();
     if (reportsError) throw reportsError;
 
     const reportRows = reports ?? [];
@@ -153,6 +166,9 @@ export async function getPhotoWallData(options: {
       .map((report) => report.photo_path)
       .filter((path): path is string => typeof path === "string");
     const reporterIds = [...new Set(reportRows.map((report) => report.user_id))];
+    const finishSignedTiming = startPerformanceTimer(
+      "getPhotoWallData signed URLs",
+    );
     const [signedResult, reportersResult] = await Promise.all([
       paths.length
         ? admin.storage
@@ -162,7 +178,7 @@ export async function getPhotoWallData(options: {
       reporterIds.length
         ? admin.from("profiles").select("id, name").in("id", reporterIds)
         : Promise.resolve({ data: [], error: null }),
-    ]);
+    ]).finally(finishSignedTiming);
     if (signedResult.error) throw signedResult.error;
     if (reportersResult.error) throw reportersResult.error;
 
@@ -228,5 +244,7 @@ export async function getPhotoWallData(options: {
       errorKind: "unknown",
       isTestMode,
     };
+  } finally {
+    finishTiming();
   }
 }

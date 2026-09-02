@@ -5,6 +5,8 @@ import { unstable_rethrow } from "next/navigation";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { getServerActivityDataScope } from "@/features/activity/server";
+import { getCurrentProfileSummary } from "@/features/profile/data";
+import { startPerformanceTimer } from "@/lib/performance";
 
 import type { MapData, MapTeam, MapTeamGroup } from "./types";
 
@@ -42,24 +44,16 @@ function getEmptyData(error: string | null = null, isTestMode = false): MapData 
 }
 
 export async function getMapData(): Promise<MapData> {
+  const finishTiming = startPerformanceTimer("getMapData");
   const { isTestMode } = getServerActivityDataScope();
   if (!hasSupabaseConfig()) {
+    finishTiming();
     return getEmptyData("尚未設定 Supabase 連線。", isTestMode);
   }
 
   try {
     const supabase = await createClient();
-    const { data: claimsData } = await supabase.auth.getClaims();
-    const userId = claimsData?.claims?.sub;
-
-    const profileQuery = userId
-      ? supabase
-          .from("profiles")
-          .select("team_id")
-          .eq("id", userId)
-          .maybeSingle()
-      : Promise.resolve({ data: null, error: null });
-
+    const finishQueryTiming = startPerformanceTimer("getMapData queries");
     const [teamGroupsResult, zonesResult, teamsResult, progressResult, profileResult] =
       await Promise.all([
         supabase
@@ -84,15 +78,14 @@ export async function getMapData(): Promise<MapData> {
             "team_id, accepted_total, current_square, steps_to_next_square",
           )
           .eq("is_prelaunch_test", isTestMode),
-        profileQuery,
-      ]);
+        getCurrentProfileSummary(),
+      ]).finally(finishQueryTiming);
 
     const queryError =
       teamGroupsResult.error ??
       zonesResult.error ??
       teamsResult.error ??
-      progressResult.error ??
-      profileResult.error;
+      progressResult.error;
 
     if (queryError) {
       throw queryError;
@@ -150,12 +143,9 @@ export async function getMapData(): Promise<MapData> {
       return getEmptyData(null, isTestMode);
     }
 
-    const profileTeam = (teamsResult.data ?? []).find(
-      (team) => team.id === profileResult.data?.team_id,
-    );
-    const profileTeamGroupId = profileTeam
-      ? zoneById.get(profileTeam.zone_id)?.team_group_id
-      : null;
+    const profileTeamGroupId = teamGroups.find(
+      (teamGroup) => teamGroup.name === profileResult.profile?.teamGroupName,
+    )?.id;
     const hasProfileTeamGroup = teamGroups.some(
       (teamGroup) => teamGroup.id === profileTeamGroupId,
     );
@@ -172,5 +162,7 @@ export async function getMapData(): Promise<MapData> {
     unstable_rethrow(error);
     console.error("Unable to load map data", error);
     return getEmptyData("目前無法載入地圖資料。", isTestMode);
+  } finally {
+    finishTiming();
   }
 }
