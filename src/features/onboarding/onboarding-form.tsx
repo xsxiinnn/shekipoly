@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 
 import { getTeamThemeStyle, resolveTeamTheme } from "@/config/team-themes";
+import { PendingOverlay } from "@/components/pending-overlay";
 import { createClient } from "@/lib/supabase/client";
 
 import { saveProfile } from "./actions";
@@ -106,11 +107,16 @@ export function OnboardingForm({
   const selectedTheme = resolveTeamTheme(selectedTeamGroup?.name);
 
   return (
-    <main
-      data-team-theme={selectedTheme.slug}
-      style={getTeamThemeStyle(selectedTeamGroup?.name)}
-      className="mx-auto min-h-dvh w-full max-w-md overflow-x-clip bg-team-page px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))] text-team-on-primary shadow-[0_0_40px_rgba(29,39,36,0.08)] transition-colors duration-300"
-    >
+    <>
+      <PendingOverlay
+        visible={isPending}
+        message={profile ? "請稍等，正在儲存修改…" : "請稍等，正在完成設定…"}
+      />
+      <main
+        data-team-theme={selectedTheme.slug}
+        style={getTeamThemeStyle(selectedTeamGroup?.name)}
+        className="mx-auto min-h-dvh w-full max-w-md overflow-x-clip bg-team-page px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))] text-team-on-primary shadow-[0_0_40px_rgba(29,39,36,0.08)] transition-colors duration-300"
+      >
       <header>
         <div className="flex size-12 items-center justify-center rounded-2xl bg-team-on-primary/15 text-xl font-black shadow-[0_8px_20px_rgba(29,39,36,0.14)]">
           走
@@ -289,6 +295,7 @@ export function OnboardingForm({
         ) : null}
       </div>
       </form>
-    </main>
+      </main>
+    </>
   );
 }

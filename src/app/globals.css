@@ -58,6 +58,11 @@ a {
   -webkit-tap-highlight-color: transparent;
 }
 
+button:not(:disabled):active,
+a:active {
+  transform: scale(0.98);
+}
+
 :focus-visible {
   outline: 3px solid color-mix(in srgb, var(--brand) 70%, white);
   outline-offset: 3px;

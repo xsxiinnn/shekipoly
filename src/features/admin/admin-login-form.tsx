@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 
+import { PendingOverlay } from "@/components/pending-overlay";
+
 import { adminLoginAction, type AdminActionState } from "./actions";
 
 const initialState: AdminActionState = { status: "idle", message: null };
@@ -9,7 +11,9 @@ const initialState: AdminActionState = { status: "idle", message: null };
 export function AdminLoginForm() {
   const [state, action, pending] = useActionState(adminLoginAction, initialState);
   return (
-    <form action={action} className="mt-7 space-y-5">
+    <>
+      <PendingOverlay visible={pending} message="請稍等，正在登入…" />
+      <form action={action} className="mt-7 space-y-5">
       <label className="block text-sm font-bold">
         Email
         <input
@@ -44,6 +48,7 @@ export function AdminLoginForm() {
       >
         {pending ? "登入中…" : "登入管理後台"}
       </button>
-    </form>
+      </form>
+    </>
   );
 }

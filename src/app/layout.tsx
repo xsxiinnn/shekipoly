@@ -1,4 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
+
+import { NavigationFeedback } from "@/components/navigation-feedback";
 
 import "./globals.css";
 
@@ -18,7 +21,12 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<LayoutProps<"/">>) {
   return (
     <html lang="zh-Hant" className="h-full antialiased">
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        {children}
+        <Suspense fallback={null}>
+          <NavigationFeedback />
+        </Suspense>
+      </body>
     </html>
   );
 }

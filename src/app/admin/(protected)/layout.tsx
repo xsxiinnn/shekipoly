@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { adminLogoutAction } from "@/features/admin/actions";
 import { getAdminIdentity } from "@/features/admin/auth";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 
 export default async function AdminProtectedLayout({ children }: { children: React.ReactNode }) {
   const admin = await getAdminIdentity();
@@ -21,7 +22,12 @@ export default async function AdminProtectedLayout({ children }: { children: Rea
             <Link href="/admin/photos" className="rounded-xl border border-border px-3 py-2 text-center">照片管理</Link>
             <Link href="/report" className="rounded-xl border border-border px-3 py-2 text-center">返回活動網站</Link>
             <form action={adminLogoutAction} className="col-span-2 sm:block">
-              <button className="w-full rounded-xl bg-foreground px-3 py-2 text-white">登出</button>
+              <PendingSubmitButton
+                pendingLabel="正在登出"
+                className="w-full rounded-xl bg-foreground px-3 py-2 text-white disabled:opacity-60"
+              >
+                登出
+              </PendingSubmitButton>
             </form>
           </nav>
         </div>

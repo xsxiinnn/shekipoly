@@ -14,6 +14,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { getMissionImage } from "@/config/team-themes";
 import { startPerformanceTimer } from "@/lib/performance";
+import { PendingOverlay } from "@/components/pending-overlay";
 
 import { submitReport } from "./actions";
 import { hasHeicFileHint, preparePhoto, type PreparedPhoto } from "./photo";
@@ -33,7 +34,13 @@ const initialState: ReportActionState = {
 const fieldClassName =
   "h-12 w-full min-w-0 rounded-2xl border border-border bg-white px-4 text-base text-foreground outline-none transition focus:border-brand focus:ring-4 focus:ring-brand/10";
 
-export function ReportSuccessState({ result }: { result: ReportSuccess }) {
+export function ReportSuccessState({
+  result,
+  onReportAgain,
+}: {
+  result: ReportSuccess;
+  onReportAgain?: () => void;
+}) {
   return (
     <section className="mt-7 overflow-hidden rounded-[28px] border border-[#cfe8dd] bg-white shadow-[0_12px_34px_rgba(29,39,36,0.08)]">
       <div className="border-b border-team-control-border bg-team-control px-5 py-6 text-team-control-text">
@@ -100,12 +107,13 @@ export function ReportSuccessState({ result }: { result: ReportSuccess }) {
         </dl>
 
         <div className="space-y-2 pt-1">
-          <Link
-            href="/report"
+          <button
+            type="button"
+            onClick={onReportAgain}
             className="flex h-12 items-center justify-center rounded-2xl border-2 border-team-control-border bg-team-control text-base font-black text-team-control-text"
           >
             再回報一位
-          </Link>
+          </button>
           <Link
             href="/map"
             className="flex h-12 items-center justify-center rounded-2xl border border-border text-base font-black text-foreground"
@@ -126,12 +134,14 @@ export function ReportSuccessState({ result }: { result: ReportSuccess }) {
   );
 }
 
-export function ReportForm({
+function ReportFormSession({
   missions,
   profile,
+  onReportAgain,
 }: {
   missions: ReportMission[];
   profile: ReportProfile;
+  onReportAgain: () => void;
 }) {
   const [selectedMissionId, setSelectedMissionId] = useState<number | null>(null);
   const [is3x5, setIs3x5] = useState<boolean | null>(null);
@@ -265,7 +275,7 @@ export function ReportForm({
   }
 
   if (state.status === "success" && state.result) {
-    return <ReportSuccessState result={state.result} />;
+    return <ReportSuccessState result={state.result} onReportAgain={onReportAgain} />;
   }
 
   const selectedMission = missions.find(
@@ -280,7 +290,20 @@ export function ReportForm({
       : estimatedMissionScore + (photo ? 3 : 0);
 
   return (
-    <form
+    <>
+      <PendingOverlay
+        visible={isBusy}
+        message={
+          isProcessingPhoto
+            ? isProcessingIphonePhoto
+              ? "請稍等，正在處理 iPhone 照片…"
+              : "請稍等，正在處理照片…"
+            : isUploadingPhoto
+              ? "請稍等，正在上傳照片…"
+              : "請稍等，正在送出回報…"
+        }
+      />
+      <form
       action={formAction}
       onSubmit={handleSubmit}
       aria-busy={isBusy}
@@ -621,6 +644,26 @@ export function ReportForm({
               ? `正在為 ${profile.name} 送出回報`
               : ""}
       </span>
-    </form>
+      </form>
+    </>
+  );
+}
+
+export function ReportForm({
+  missions,
+  profile,
+}: {
+  missions: ReportMission[];
+  profile: ReportProfile;
+}) {
+  const [formSession, setFormSession] = useState(0);
+
+  return (
+    <ReportFormSession
+      key={formSession}
+      missions={missions}
+      profile={profile}
+      onReportAgain={() => setFormSession((current) => current + 1)}
+    />
   );
 }

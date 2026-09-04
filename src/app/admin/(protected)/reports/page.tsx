@@ -36,7 +36,7 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
     <div className="space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div><p className="text-sm font-bold text-brand">資料管理</p><h1 className="mt-1 text-3xl font-black">回報紀錄</h1></div>
-        <a href={`/admin/reports/export?${exportQuery}`} className="flex h-10 items-center justify-center rounded-xl bg-brand px-4 text-sm font-black text-white">匯出目前篩選 CSV</a>
+        <a data-no-wait href={`/admin/reports/export?${exportQuery}`} className="flex h-10 items-center justify-center rounded-xl bg-brand px-4 text-sm font-black text-white">匯出目前篩選 CSV</a>
       </header>
       <AdminFilters references={data.references} filters={filters} reportsMode />
       {data.error ? <p className="rounded-2xl bg-red-50 p-4 font-bold text-red-700">{data.error}</p> : null}

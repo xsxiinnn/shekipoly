@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 
+import { PendingOverlay } from "@/components/pending-overlay";
+
 import {
   setPhotoVisibilityAction,
   voidReportAction,
@@ -13,15 +15,17 @@ const initialState: AdminActionState = { status: "idle", message: null };
 export function VoidReportForm({ reportId }: { reportId: string }) {
   const [state, action, pending] = useActionState(voidReportAction, initialState);
   return (
-    <form
-      action={action}
-      onSubmit={(event) => {
-        if (!window.confirm("作廢後，這筆回報的有效步數將從小組進度中移除，但原始紀錄會保留。確定繼續嗎？")) {
-          event.preventDefault();
-        }
-      }}
-      className="space-y-3"
-    >
+    <>
+      <PendingOverlay visible={pending} message="請稍等，正在處理回報…" />
+      <form
+        action={action}
+        onSubmit={(event) => {
+          if (!window.confirm("作廢後，這筆回報的有效步數將從小組進度中移除，但原始紀錄會保留。確定繼續嗎？")) {
+            event.preventDefault();
+          }
+        }}
+        className="space-y-3"
+      >
       <input type="hidden" name="report_id" value={reportId} />
       <label className="block text-sm font-bold">
         作廢原因
@@ -52,7 +56,8 @@ export function VoidReportForm({ reportId }: { reportId: string }) {
           {state.message}
         </p>
       ) : null}
-    </form>
+      </form>
+    </>
   );
 }
 
@@ -69,7 +74,9 @@ export function PhotoVisibilityForm({
   );
   const nextVisibility = visibility === "visible" ? "hidden" : "visible";
   return (
-    <form action={action} className="space-y-2">
+    <>
+      <PendingOverlay visible={pending} message="請稍等，正在更新照片…" />
+      <form action={action} className="space-y-2">
       <input type="hidden" name="report_id" value={reportId} />
       <input type="hidden" name="visibility" value={nextVisibility} />
       <button
@@ -84,6 +91,7 @@ export function PhotoVisibilityForm({
           {state.message}
         </p>
       ) : null}
-    </form>
+      </form>
+    </>
   );
 }
